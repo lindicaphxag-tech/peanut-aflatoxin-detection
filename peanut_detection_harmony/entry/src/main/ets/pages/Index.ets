@@ -15,6 +15,7 @@ struct Index {
   @State hasScore: boolean = false
   @State isAnalyzing: boolean = false
   @State isReady: boolean = false
+  @State selectedImage: string = ''
   private inference: LgbmInference = new LgbmInference()
   private historyDb: HistoryDb = new HistoryDb()
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
@@ -61,7 +62,7 @@ struct Index {
         await this.analyzeImage(res.photoUris[0])
       }
     } catch (e) {
-      promptAction.showToast({ message: '请先授予相册权限' })
+      promptAction.showToast({ message: '无法打开图片选择器，请重试' })
     }
   }
 
@@ -69,6 +70,7 @@ struct Index {
     this.isAnalyzing = true
     this.result = ''
     this.hasScore = false
+    this.selectedImage = ''
     try {
       // 1. 端侧提取16维特征
       const features = await featureExtractor.extract(uri, this.context)
@@ -84,6 +86,7 @@ struct Index {
         confidence: res.moldyProb
       })
       this.hasScore = true
+      this.selectedImage = uri
     } catch (e) {
       this.result = '检测失败，请重试'
       promptAction.showToast({ message: '图片处理失败，请更换清晰照片' })
@@ -110,8 +113,15 @@ struct Index {
           .height(280)
           .fill('#f5f5f5')
           .radius(16)
-        Text('选择图片进行模型演示')
-          .fontColor('#999')
+        if (this.selectedImage) {
+          Image(this.selectedImage)
+            .width(280)
+            .height(280)
+            .objectFit(ImageFit.Contain)
+        } else {
+          Text('选择图片进行模型演示')
+            .fontColor('#999')
+        }
       }
       .margin({ top: 20 })
 

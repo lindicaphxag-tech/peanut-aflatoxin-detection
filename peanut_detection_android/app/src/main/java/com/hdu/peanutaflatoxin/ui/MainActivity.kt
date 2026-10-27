@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -23,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progress: ProgressBar
     private lateinit var detectButton: Button
     private lateinit var historyButton: Button
+    private lateinit var imagePreview: ImageView
 
     private val pickImageLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -44,6 +46,7 @@ class MainActivity : AppCompatActivity() {
         progress = findViewById(R.id.progress)
         detectButton = findViewById(R.id.btn_detect)
         historyButton = findViewById(R.id.btn_history)
+        imagePreview = findViewById(R.id.image_preview)
 
         // 首次启动弹出隐私政策
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
@@ -88,12 +91,13 @@ class MainActivity : AppCompatActivity() {
         progress.visibility = ProgressBar.VISIBLE
         tvResult.text = ""
         tvConfidence.text = ""
+        imagePreview.setImageDrawable(null)
         thread {
             try {
                 // 1. 提取特征
-                val features = FeatureExtractor.extractFromUri(this, uri)
+                val extracted = FeatureExtractor.extractWithPreview(this, uri)
                 // 2. 本地推理
-                val res = inference.classify(features)
+                val res = inference.classify(extracted.features)
                 // 历史记录成功保存后才展示结果，避免显示无法查询的结果。
                 if (dbHelper.insertRecord(uri.toString(), res.isMoldy, res.moldyProb) == -1L) {
                     throw IllegalStateException("无法保存历史记录")
@@ -103,6 +107,7 @@ class MainActivity : AppCompatActivity() {
                     detectButton.isEnabled = true
                     historyButton.isEnabled = true
                     tvResult.text = "模型演示结果（未经验证）"
+                    imagePreview.setImageBitmap(extracted.preview)
                     tvResult.setTextColor(getColor(R.color.black))
                     tvConfidence.text = "模型输出分数：${"%.1f".format(res.moldyProb * 100)}%"
                 }

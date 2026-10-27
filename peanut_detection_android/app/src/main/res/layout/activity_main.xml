@@ -28,11 +28,13 @@
         android:layout_marginTop="8dp"/>
 
     <ImageView
+        android:id="@+id/image_preview"
         android:layout_width="280dp"
         android:layout_height="280dp"
         android:background="#f5f5f5"
         android:layout_marginTop="32dp"
-        android:contentDescription="预览区"/>
+        android:contentDescription="所选图片预览"
+        android:scaleType="fitCenter"/>
 
     <TextView
         android:id="@+id/tv_result"

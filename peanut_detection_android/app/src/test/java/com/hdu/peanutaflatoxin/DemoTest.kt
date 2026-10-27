@@ -11,6 +11,7 @@ import android.app.Activity
 import android.os.Looper
 import android.widget.Button
 import android.widget.TextView
+import android.widget.ImageView
 import android.widget.ScrollView
 import com.hdu.peanutaflatoxin.db.HistoryDbHelper
 import com.hdu.peanutaflatoxin.ml.LgbmInference
@@ -98,6 +99,8 @@ class DemoTest {
         }
         assertTrue(result.text.toString().contains("未经验证"))
         assertTrue(button.isEnabled)
+        val previewId = activity.resources.getIdentifier("image_preview", "id", activity.packageName)
+        assertTrue(previewId != 0 && activity.findViewById<ImageView>(previewId).drawable != null)
         assertEquals(1, HistoryDbHelper(context).getAllRecords().size)
     }
 

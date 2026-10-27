@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.provider.MediaStore
 import kotlin.math.sqrt
 
 /**
@@ -12,9 +11,11 @@ import kotlin.math.sqrt
  * 当前为演示用的近似特征；与训练脚本不一致，不能用于安全判断。
  */
 object FeatureExtractor {
-    private const val FEATURE_DIM = 16
+    data class ExtractedImage(val features: DoubleArray, val preview: Bitmap)
 
-    fun extractFromUri(context: Context, uri: Uri): DoubleArray {
+    fun extractFromUri(context: Context, uri: Uri): DoubleArray = extractWithPreview(context, uri).features
+
+    fun extractWithPreview(context: Context, uri: Uri): ExtractedImage {
         // 1. 解码图片并缩放到256x256，减小内存占用
         val options = BitmapFactory.Options().apply {
             inSampleSize = 4
@@ -40,11 +41,9 @@ object FeatureExtractor {
         val morph = doubleArrayOf(0.82, 0.31)
 
         // 拼接16维特征向量
-        return doubleArrayOf(
-            *grayStats,
-            *glcm,
-            *localStd,
-            *morph
+        return ExtractedImage(
+            features = doubleArrayOf(*grayStats, *glcm, *localStd, *morph),
+            preview = scaled
         )
     }
 
