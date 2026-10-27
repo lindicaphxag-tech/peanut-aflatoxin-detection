@@ -5,8 +5,7 @@
     android:orientation="vertical"
     android:padding="16dp"
     android:background="#ffffff"
-    android:layout_marginBottom="12dp"
-    android:radius="12dp">
+    android:layout_marginBottom="12dp">
     <TextView
         android:id="@+id/tv_time"
         android:layout_width="wrap_content"

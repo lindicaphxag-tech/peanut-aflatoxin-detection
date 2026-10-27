@@ -30,8 +30,8 @@ class HistoryActivity : AppCompatActivity() {
         records.forEach { record ->
             val itemView = layoutInflater.inflate(R.layout.item_history, null)
             itemView.findViewById<TextView>(R.id.tv_time).text = sdf.format(Date(record.timestamp.toLong()))
-            itemView.findViewById<TextView>(R.id.tv_result).text = if (record.isMoldy) "存在霉变风险" else "状态正常"
-            itemView.findViewById<TextView>(R.id.tv_confidence).text = "置信度：${"%.1f".format(record.confidence * 100)}%"
+            itemView.findViewById<TextView>(R.id.tv_result).text = "模型演示结果（未经验证）"
+            itemView.findViewById<TextView>(R.id.tv_confidence).text = "模型输出分数：${"%.1f".format(record.confidence * 100)}%"
             container.addView(itemView)
         }
     }

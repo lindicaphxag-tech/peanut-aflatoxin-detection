@@ -1,6 +1,6 @@
-import { image } from '@kit.ImageKit'
-import { fileIo } from '@kit.CoreFileKit'
-import { common } from '@kit.AbilityKit'
+import image from '@ohos.multimedia.image'
+import fileIo from '@ohos.file.fs'
+import common from '@ohos.app.ability.common'
 
 class FeatureExtractorImpl {
   async extract(uri: string, context: common.UIAbilityContext): Promise<number[]> {
@@ -8,15 +8,19 @@ class FeatureExtractorImpl {
     const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY)
     const source = image.createImageSource(file.fd)
     const pixelMap = await source.createPixelMap({
-      desiredSize: { width: 256, height: 256 }
+      desiredSize: { width: 256, height: 256 },
+      desiredPixelFormat: image.PixelMapFormat.RGBA_8888
     })
-    fileIo.closeSync(file.fd)
 
     // 2. 获取像素数据
-    const pixelBytes = await pixelMap.getImagePixelsInfo()
-    const pixels = new Uint8ClampedArray(pixelBytes)
+    const pixelBytes = new ArrayBuffer(pixelMap.getPixelBytesNumber())
+    await pixelMap.readPixelsToBuffer(pixelBytes)
+    await pixelMap.release()
+    await source.release()
+    fileIo.closeSync(file.fd)
+    const pixels = new Uint8Array(pixelBytes)
 
-    // 3. 提取16维特征（和Python/Android端对齐）
+    // 3. 演示用近似特征，与训练流程尚未对齐
     const grayValues: number[] = []
     for (let i = 0; i < pixels.length; i += 4) {
       const r = pixels[i]

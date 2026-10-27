@@ -1,5 +1,5 @@
-import { relationalStore } from '@kit.ArkData';
-import { common } from '@kit.AbilityKit';
+import relationalStore from '@ohos.data.relationalStore';
+import common from '@ohos.app.ability.common';
 
 export interface HistoryRecord {
   id: number;
@@ -8,9 +8,15 @@ export interface HistoryRecord {
   isMoldy: boolean;
   confidence: number;
 }
+export interface NewHistoryRecord {
+  timestamp: number;
+  imageUri: string;
+  isMoldy: boolean;
+  confidence: number;
+}
 
 export class HistoryDb {
-  private store: relationalStore.RelationalStore | null = null;
+  private store: relationalStore.RdbStore | null = null;
 
   async init(context: common.UIAbilityContext) {
     const config: relationalStore.StoreConfig = {
@@ -27,9 +33,9 @@ export class HistoryDb {
     )`);
   }
 
-  async insert(record: Omit<HistoryRecord, 'id'>) {
+  async insert(record: NewHistoryRecord) {
     if (!this.store) return;
-    const valueBucket: Record<string, number | string | boolean> = {
+    const valueBucket: relationalStore.ValuesBucket = {
       'timestamp': record.timestamp,
       'image_uri': record.imageUri,
       'is_moldy': record.isMoldy ? 1 : 0,
@@ -40,17 +46,19 @@ export class HistoryDb {
 
   async getAll(): Promise<HistoryRecord[]> {
     if (!this.store) return [];
-    const result = await this.store.querySql('SELECT * FROM history ORDER BY timestamp DESC');
+    const result: relationalStore.ResultSet = await this.store.querySql('SELECT * FROM history ORDER BY timestamp DESC');
     const list: HistoryRecord[] = [];
     while (result.goToNextRow()) {
-      list.push({
+      const record: HistoryRecord = {
         id: result.getLong(result.getColumnIndex('id')),
         timestamp: result.getLong(result.getColumnIndex('timestamp')),
         imageUri: result.getString(result.getColumnIndex('image_uri')),
         isMoldy: result.getLong(result.getColumnIndex('is_moldy')) === 1,
         confidence: result.getDouble(result.getColumnIndex('confidence'))
-      });
+      };
+      list.push(record);
     }
+    result.close();
     return list;
   }
 }

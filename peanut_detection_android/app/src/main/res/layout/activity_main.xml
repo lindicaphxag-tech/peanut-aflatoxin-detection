@@ -17,7 +17,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="近红外三波段+LightGBM融合检测"
+        android:text="研究演示：图像特征与模型尚待验证"
         android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginTop="8dp"/>
@@ -56,7 +56,7 @@
         android:id="@+id/btn_detect"
         android:layout_width="280dp"
         android:layout_height="50dp"
-        android:text="开始检测"
+        android:text="运行模型演示"
         android:textSize="18sp"
         android:layout_marginTop="32dp"/>
 
@@ -72,7 +72,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="*检测结果仅作快速筛查参考，确诊请以实验室检测为准"
+        android:text="*演示结果不能用于判断食品安全，请以实验室检测为准"
         android:textSize="12sp"
         android:textColor="#999999"
         android:layout_marginTop="48dp"/>

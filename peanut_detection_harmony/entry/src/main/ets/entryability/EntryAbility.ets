@@ -1,9 +1,11 @@
-import { UIAbility, Want } from '@kit.AbilityKit'
-import { window } from '@kit.ArkUI'
-import { common } from '@kit.AbilityKit'
+import UIAbility from '@ohos.app.ability.UIAbility'
+import Want from '@ohos.app.ability.Want'
+import window from '@ohos.window'
+import common from '@ohos.app.ability.common'
+import AbilityConstant from '@ohos.app.ability.AbilityConstant'
 
 export default class EntryAbility extends UIAbility {
-  onCreate(want: Want, launchParam: common.LaunchParam) {
+  onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
     console.info('EntryAbility onCreate')
   }
 

@@ -1,20 +1,14 @@
 package com.hdu.peanutaflatoxin.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.hdu.peanutaflatoxin.R
 import com.hdu.peanutaflatoxin.db.HistoryDbHelper
 import com.hdu.peanutaflatoxin.ml.LgbmInference
@@ -27,7 +21,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResult: TextView
     private lateinit var tvConfidence: TextView
     private lateinit var progress: ProgressBar
-    private val REQUEST_PERMISSION = 100
 
     private val pickImageLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -54,9 +47,6 @@ class MainActivity : AppCompatActivity() {
             showPrivacyDialog()
         }
 
-        // 申请权限
-        checkPermissions()
-
         findViewById<Button>(R.id.btn_detect).setOnClickListener {
             openGallery()
         }
@@ -79,22 +69,11 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun checkPermissions() {
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
-        }
-        val needRequest = permissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        if (needRequest.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, needRequest.toTypedArray(), REQUEST_PERMISSION)
-        }
-    }
-
     private fun openGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "image/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+        }
         pickImageLauncher.launch(intent)
     }
 
@@ -110,9 +89,9 @@ class MainActivity : AppCompatActivity() {
                 val res = inference.classify(features)
                 runOnUiThread {
                     progress.visibility = ProgressBar.GONE
-                    tvResult.text = if (res.isMoldy) "检测结果：存在黄曲霉污染风险" else "检测结果：花生状态正常"
-                    tvResult.setTextColor(if (res.isMoldy) getColor(R.color.red) else getColor(R.color.green))
-                    tvConfidence.text = "置信度：${"%.1f".format(res.confidence * 100)}%"
+                    tvResult.text = "模型演示结果（未经验证）"
+                    tvResult.setTextColor(getColor(R.color.black))
+                    tvConfidence.text = "模型输出分数：${"%.1f".format(res.moldyProb * 100)}%"
                 }
                 // 3. 保存历史
                 dbHelper.insertRecord(uri.toString(), res.isMoldy, res.moldyProb)

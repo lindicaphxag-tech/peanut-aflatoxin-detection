@@ -1,0 +1,11 @@
+{
+  "name": "peanut-aflatoxin-demo",
+  "version": "1.0.0",
+  "description": "Offline model demonstration",
+  "main": "",
+  "author": "",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.6"
+  }
+}

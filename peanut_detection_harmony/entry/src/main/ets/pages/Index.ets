@@ -1,9 +1,11 @@
-import { picker } from '@kit.CoreFileKit'
-import { common } from '@kit.AbilityKit'
+import picker from '@ohos.file.picker'
+import common from '@ohos.app.ability.common'
 import { LgbmInference } from '../engine/LgbmInference'
 import { HistoryDb } from '../db/HistoryDb'
 import { featureExtractor } from '../engine/FeatureExtractor'
-import { promptAction } from '@kit.ArkUI'
+import promptAction from '@ohos.promptAction'
+import router from '@ohos.router'
+import preferences from '@ohos.data.preferences'
 
 @Entry
 @Component
@@ -19,7 +21,7 @@ struct Index {
     // 初始化数据库
     await this.historyDb.init(this.context)
     // 首次启动弹出隐私政策
-    const agreed = await this.context.preferences.getPreferences('app_prefs')
+    const agreed = await preferences.getPreferences(this.context, 'app_prefs')
     if (!await agreed.get('privacy_agreed', false)) {
       this.showPrivacyDialog()
     }
@@ -31,8 +33,9 @@ struct Index {
       message: '本应用所有检测数据均仅存储在您的手机本地，不会上传任何图像或个人信息到服务器。',
       buttons: [{ text: '同意', color: '#007aff' }]
     }).then(async () => {
-      const pref = await this.context.preferences.getPreferences('app_prefs')
+      const pref = await preferences.getPreferences(this.context, 'app_prefs')
       await pref.put('privacy_agreed', true)
+      await pref.flush()
     })
   }
 
@@ -58,8 +61,8 @@ struct Index {
       const features = await featureExtractor.extract(uri, this.context)
       // 2. 本地推理
       const res = this.inference.classify(features)
-      this.result = res.isMoldy ? '检测结果：存在黄曲霉污染风险' : '检测结果：花生状态正常'
-      this.confidence = res.confidence
+      this.result = '模型演示结果（未经验证）'
+      this.confidence = res.moldyProb
       // 3. 保存历史记录
       await this.historyDb.insert({
         timestamp: new Date().getTime(),
@@ -82,7 +85,7 @@ struct Index {
         .fontWeight(FontWeight.Bold)
         .margin({ top: 60 })
 
-      Text('近红外三波段+LightGBM端侧推理')
+      Text('研究演示：图像特征与模型尚待验证')
         .fontSize(14)
         .fontColor('#666')
 
@@ -92,7 +95,7 @@ struct Index {
           .height(280)
           .fill('#f5f5f5')
           .radius(16)
-        Text('将样本置于镜头中心拍摄')
+        Text('选择图片进行模型演示')
           .fontColor('#999')
       }
       .margin({ top: 20 })
@@ -100,9 +103,9 @@ struct Index {
       if (this.result) {
         Text(this.result)
           .fontSize(20)
-          .fontColor(this.result.includes('风险') ? '#e53935' : '#43a047')
+          .fontColor('#333333')
           .fontWeight(FontWeight.Medium)
-        Text(`置信度：${(this.confidence * 100).toFixed(1)}%`)
+        Text(`模型输出分数：${(this.confidence * 100).toFixed(1)}%`)
           .fontSize(16)
           .fontColor('#666')
       }
@@ -113,7 +116,7 @@ struct Index {
           .height(60)
       }
 
-      Button('开始检测')
+      Button('运行模型演示')
         .width(280)
         .height(50)
         .fontSize(18)
@@ -131,7 +134,7 @@ struct Index {
           router.pushUrl({ url: 'pages/History' })
         })
 
-      Text('*检测结果仅作快速筛查参考')
+      Text('*演示结果不能用于判断食品安全，请以实验室检测为准')
         .fontSize(12)
         .fontColor('#999')
         .margin({ top: 40 })

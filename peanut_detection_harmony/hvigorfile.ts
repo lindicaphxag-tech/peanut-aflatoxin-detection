@@ -1,5 +1,6 @@
 import { appTasks } from '@ohos/hvigor-ohos-plugin';
 
 export default {
-  tasks: appTasks
+  system: appTasks,
+  plugins: []
 }

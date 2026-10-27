@@ -9,20 +9,20 @@ import kotlin.math.sqrt
 
 /**
  * 端侧纯Bitmap特征提取，无需OpenCV原生依赖，适配所有Android手机
- * 提取逻辑和Python训练脚本1:1对齐，保证推理一致性
+ * 当前为演示用的近似特征；与训练脚本不一致，不能用于安全判断。
  */
 object FeatureExtractor {
     private const val FEATURE_DIM = 16
 
     fun extractFromUri(context: Context, uri: Uri): DoubleArray {
         // 1. 解码图片并缩放到256x256，减小内存占用
-        val inputStream = context.contentResolver.openInputStream(uri)
         val options = BitmapFactory.Options().apply {
             inSampleSize = 4
         }
-        val bitmap = BitmapFactory.decodeStream(inputStream, null, options)
-        inputStream?.close()
+        val inputStream = context.contentResolver.openInputStream(uri)
             ?: throw IllegalArgumentException("无法读取图片")
+        val bitmap = inputStream.use { BitmapFactory.decodeStream(it, null, options) }
+            ?: throw IllegalArgumentException("无法解码图片")
         val scaled = Bitmap.createScaledBitmap(bitmap, 256, 256, true)
 
         // 2. 转灰度图

@@ -1,6 +1,6 @@
 """
-Kaggle级LightGBM花生黄曲霉检测训练流水线
-严格和端侧推理逻辑1:1对齐，无任何训练-推理偏差
+LightGBM花生图像特征训练流水线（研究用途）
+该特征提取与现有手机演示不同，不能用于未经验证的食品安全判断。
 作者: HDU Peanut Detection Team
 """
 import os
@@ -12,6 +12,7 @@ import cv2
 from skimage.feature import graycomatrix, graycoprops
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import (accuracy_score, precision_score, recall_score, f1_score,
                              roc_auc_score, confusion_matrix, classification_report)
 import lightgbm as lgb
@@ -21,16 +22,15 @@ import matplotlib.pyplot as plt
 SEED = 42
 DATA_DIR = "./data/"  # 目录结构: data/normal/*.jpg, data/moldy/*.jpg
 OUTPUT_DIR = "./output/"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# 预处理参数（和端侧lightGBM.py完全对齐）
+# Python 参考预处理参数
 ILLUM_KERNEL_SIZE = 35
 CLAHE_CLIP_LIMIT = 2.2
 CLAHE_TILE_GRID = (8, 8)
 SEG_MARGIN = 0.18
 SEG_ITER = 4
 
-# 特征名称（和端侧严格一致）
+# Python 参考特征名称
 FEAT_NAMES = (
     [f"gray_{n}" for n in ["mean", "std", "skew", "kurt", "p10", "p50", "p90", "range"]]
     + [f"glcm_{n}" for n in ["contrast", "energy", "homogeneity", "correlation"]]
@@ -38,7 +38,7 @@ FEAT_NAMES = (
     + [f"morph_{n}" for n in ["circularity", "eccentricity"]]
 )
 
-# ====================== 预处理函数（和端侧逐行对齐） ======================
+# ====================== 预处理函数 ======================
 def illumination_correct(gray_img, kernel_size=ILLUM_KERNEL_SIZE):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     bg = cv2.morphologyEx(gray_img, cv2.MORPH_OPEN, kernel)
@@ -96,7 +96,7 @@ def segment_peanut(enhanced_gray, bgr_ori):
     out = cv2.erode(out, np.ones((3, 3), np.uint8), iterations=1)
     return out
 
-# ====================== 特征提取（和端侧逐行对齐） ======================
+# ====================== 特征提取 ======================
 def feat_gray_stats(pixels):
     if len(pixels) < 50:
         return [0.0] * 8
@@ -183,12 +183,32 @@ def build_dataset():
                     y.append(lab)
             except Exception as e:
                 print(f"跳过 {f}: {e}")
+    if not X:
+        raise ValueError(f"未找到可用图片，请检查 {DATA_DIR} 下的 normal/ 和 moldy/ 目录")
     X = np.array(X)
     y = np.array(y)
     keep = ~np.isnan(X).any(axis=1)
     return X[keep], y[keep]
 
+def make_training_search(param_grid=None, folds=5, n_jobs=-1):
+    if param_grid is None:
+        param_grid = {
+            "model__n_estimators": [100, 200, 300],
+            "model__max_depth": [3, 5, 7],
+            "model__learning_rate": [0.05, 0.1],
+            "model__num_leaves": [7, 15, 31],
+            "model__min_child_samples": [5, 10],
+        }
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", lgb.LGBMClassifier(random_state=SEED, objective="binary", verbosity=-1, n_jobs=1)),
+    ])
+    cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=SEED)
+    return GridSearchCV(pipeline, param_grid, cv=cv, scoring="roc_auc", n_jobs=n_jobs, verbose=1)
+
+
 if __name__ == "__main__":
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     np.random.seed(SEED)
     print("===== Step1: 构建数据集 =====")
     X, y = build_dataset()
@@ -199,30 +219,18 @@ if __name__ == "__main__":
         X, y, test_size=0.1, random_state=SEED, stratify=y
     )
 
-    # 标准化
-    scaler = StandardScaler()
-    X_train_s = scaler.fit_transform(X_train)
-    X_test_s = scaler.transform(X_test)
-
     print("\n===== Step2: 5折分层交叉验证+网格搜索调参 =====")
-    param_grid = {
-        "n_estimators": [100, 200, 300],
-        "max_depth": [3, 5, 7],
-        "learning_rate": [0.05, 0.1],
-        "num_leaves": [7, 15, 31],
-        "min_child_samples": [5, 10]
-    }
-    lgb_clf = lgb.LGBMClassifier(random_state=SEED, objective="binary", verbosity=-1)
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
-    grid = GridSearchCV(lgb_clf, param_grid, cv=cv, scoring="roc_auc", n_jobs=-1, verbose=1)
-    grid.fit(X_train_s, y_train)
-    best_model = grid.best_estimator_
+    grid = make_training_search()
+    grid.fit(X_train, y_train)
+    best_pipeline = grid.best_estimator_
+    scaler = best_pipeline.named_steps["scaler"]
+    best_model = best_pipeline.named_steps["model"]
     print(f"最优参数: {grid.best_params_}")
     print(f"5折CV最优AUC: {grid.best_score_:.4f}")
 
     print("\n===== Step3: 测试集评估 =====")
-    y_pred = best_model.predict(X_test_s)
-    y_prob = best_model.predict_proba(X_test_s)[:, 1]
+    y_pred = best_pipeline.predict(X_test)
+    y_prob = best_pipeline.predict_proba(X_test)[:, 1]
     print(classification_report(y_test, y_pred, target_names=["正常", "霉变"]))
     print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
     print(f"Precision: {precision_score(y_test, y_pred):.4f}")

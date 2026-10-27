@@ -1,0 +1,16 @@
+{
+  "name": "peanut-aflatoxin-demo",
+  "version": "1.0.0",
+  "ohos": {
+    "org": "hdu",
+    "buildTool": "hvigor",
+    "directoryLevel": "project"
+  },
+  "description": "Offline model demonstration",
+  "repository": {},
+  "dependencies": {
+    "@ohos/hypium": "1.0.6",
+    "@ohos/hvigor": "3.2.4",
+    "@ohos/hvigor-ohos-plugin": "3.2.4"
+  }
+}
