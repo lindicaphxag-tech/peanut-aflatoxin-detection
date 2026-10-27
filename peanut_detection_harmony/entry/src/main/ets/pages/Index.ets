@@ -1,0 +1,143 @@
+import { picker } from '@kit.CoreFileKit'
+import { common } from '@kit.AbilityKit'
+import { LgbmInference } from '../engine/LgbmInference'
+import { HistoryDb } from '../db/HistoryDb'
+import { featureExtractor } from '../engine/FeatureExtractor'
+import { promptAction } from '@kit.ArkUI'
+
+@Entry
+@Component
+struct Index {
+  @State result: string = ''
+  @State confidence: number = 0
+  @State isAnalyzing: boolean = false
+  private inference: LgbmInference = new LgbmInference()
+  private historyDb: HistoryDb = new HistoryDb()
+  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
+
+  async aboutToAppear() {
+    // 初始化数据库
+    await this.historyDb.init(this.context)
+    // 首次启动弹出隐私政策
+    const agreed = await this.context.preferences.getPreferences('app_prefs')
+    if (!await agreed.get('privacy_agreed', false)) {
+      this.showPrivacyDialog()
+    }
+  }
+
+  private showPrivacyDialog() {
+    promptAction.showDialog({
+      title: '隐私政策',
+      message: '本应用所有检测数据均仅存储在您的手机本地，不会上传任何图像或个人信息到服务器。',
+      buttons: [{ text: '同意', color: '#007aff' }]
+    }).then(async () => {
+      const pref = await this.context.preferences.getPreferences('app_prefs')
+      await pref.put('privacy_agreed', true)
+    })
+  }
+
+  async startDetect() {
+    try {
+      const photoPicker = new picker.PhotoViewPicker()
+      const res = await photoPicker.select({
+        MIMEType: picker.PhotoViewMIMETypes.IMAGE_TYPE,
+        maxSelectNumber: 1
+      })
+      if (res.photoUris.length > 0) {
+        this.analyzeImage(res.photoUris[0])
+      }
+    } catch (e) {
+      promptAction.showToast({ message: '请先授予相册权限' })
+    }
+  }
+
+  async analyzeImage(uri: string) {
+    this.isAnalyzing = true
+    try {
+      // 1. 端侧提取16维特征
+      const features = await featureExtractor.extract(uri, this.context)
+      // 2. 本地推理
+      const res = this.inference.classify(features)
+      this.result = res.isMoldy ? '检测结果：存在黄曲霉污染风险' : '检测结果：花生状态正常'
+      this.confidence = res.confidence
+      // 3. 保存历史记录
+      await this.historyDb.insert({
+        timestamp: new Date().getTime(),
+        imageUri: uri,
+        isMoldy: res.isMoldy,
+        confidence: res.moldyProb
+      })
+    } catch (e) {
+      this.result = '检测失败，请重试'
+      promptAction.showToast({ message: '图片处理失败，请更换清晰照片' })
+    } finally {
+      this.isAnalyzing = false
+    }
+  }
+
+  build() {
+    Column({ space: 24 }) {
+      Text('坚果黄曲霉实时检测系统')
+        .fontSize(28)
+        .fontWeight(FontWeight.Bold)
+        .margin({ top: 60 })
+
+      Text('近红外三波段+LightGBM端侧推理')
+        .fontSize(14)
+        .fontColor('#666')
+
+      Stack() {
+        Rect()
+          .width(280)
+          .height(280)
+          .fill('#f5f5f5')
+          .radius(16)
+        Text('将样本置于镜头中心拍摄')
+          .fontColor('#999')
+      }
+      .margin({ top: 20 })
+
+      if (this.result) {
+        Text(this.result)
+          .fontSize(20)
+          .fontColor(this.result.includes('风险') ? '#e53935' : '#43a047')
+          .fontWeight(FontWeight.Medium)
+        Text(`置信度：${(this.confidence * 100).toFixed(1)}%`)
+          .fontSize(16)
+          .fontColor('#666')
+      }
+
+      if (this.isAnalyzing) {
+        LoadingProgress()
+          .width(60)
+          .height(60)
+      }
+
+      Button('开始检测')
+        .width(280)
+        .height(50)
+        .fontSize(18)
+        .onClick(() => {
+          this.startDetect()
+        })
+
+      Button('查看检测历史')
+        .width(280)
+        .height(44)
+        .fontSize(16)
+        .backgroundColor('#eeeeee')
+        .fontColor('#333')
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/History' })
+        })
+
+      Text('*检测结果仅作快速筛查参考')
+        .fontSize(12)
+        .fontColor('#999')
+        .margin({ top: 40 })
+    }
+    .width('100%')
+    .height('100%')
+    .alignItems(HorizontalAlign.Center)
+  }
+}

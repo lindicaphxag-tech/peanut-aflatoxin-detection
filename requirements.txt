@@ -1,0 +1,10 @@
+# Python端训练/测试依赖清单
+joblib>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+opencv-python-headless>=4.8.0
+scikit-learn>=1.3.0
+lightgbm>=4.0.0
+scikit-image>=0.21.0
+pymupdf>=1.23.0
+matplotlib>=3.7.0
