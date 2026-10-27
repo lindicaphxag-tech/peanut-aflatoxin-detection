@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>坚果黄曲霉实时检测系统 | Game Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', sans-serif; }
+        body {
+            background: #0a0e27;
+            min-height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+        #game-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+        .ui-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+        }
+        .title {
+            font-size: 36px;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00f5d4, #00bbf9, #9b5de5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(0,245,212,0.3);
+            margin-bottom: 12px;
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.6);
+            font-size: 14px;
+            margin-bottom: 40px;
+        }
+        .scan-area {
+            width: 320px;
+            height: 320px;
+            border-radius: 24px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+            margin-bottom: 32px;
+        }
+        .scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00f5d4, transparent);
+            box-shadow: 0 0 20px #00f5d4;
+            animation: scanMove 2s linear infinite;
+            display: none;
+        }
+        .scan-area.scanning .scan-line { display: block; }
+        .scan-area.scanning { border-color: #00f5d4; box-shadow: 0 0 60px rgba(0,245,212,0.3); }
+        .scan-placeholder {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255,255,255,0.4);
+        }
+        .result-display {
+            margin: 24px 0;
+            padding: 20px 32px;
+            border-radius: 16px;
+            font-size: 22px;
+            font-weight: 700;
+            display: none;
+            text-align: center;
+        }
+        .result-normal {
+            background: rgba(67,160,71,0.2);
+            border: 1px solid #43a047;
+            color: #43a047;
+            box-shadow: 0 0 30px rgba(67,160,71,0.3);
+        }
+        .result-moldy {
+            background: rgba(229,57,53,0.2);
+            border: 1px solid #e53935;
+            color: #e53935;
+            box-shadow: 0 0 30px rgba(229,57,53,0.3);
+            animation: dangerPulse 1s ease-in-out infinite alternate;
+        }
+        .deepseek-box {
+            width: 320px;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 24px;
+            display: none;
+        }
+        .action-btn {
+            width: 280px;
+            height: 56px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+            margin-bottom: 16px;
+        }
+        .action-btn.primary {
+            background: linear-gradient(135deg, rgba(0,245,212,0.3), rgba(0,187,249,0.3));
+        }
+        .action-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(0,245,212,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .secondary-btn {
+            background: rgba(255,255,255,0.08);
+        }
+        .burst-particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: burst 1.2s ease-out forwards;
+        }
+        @keyframes burst {
+            0% { transform: translate(0,0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; }
+        }
+        @keyframes scanMove {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        @keyframes titleGlow {
+            from { filter: drop-shadow(0 0 20px rgba(0,245,212,0.3)); }
+            to { filter: drop-shadow(0 0 40px rgba(155,93,229,0.5)); }
+        }
+        @keyframes dangerPulse {
+            from { box-shadow: 0 0 20px rgba(229,57,53,0.3); }
+            to { box-shadow: 0 0 50px rgba(229,57,53,0.6); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-canvas"></div>
+    <div class="ui-container">
+        <h1 class="title">坚果黄曲霉检测系统</h1>
+        <p class="subtitle">Game Edition | 端侧AI + DeepSeek智能解读</p>
+
+        <div class="scan-area" id="scanArea">
+            <div class="scan-line"></div>
+            <div class="scan-placeholder">
+                <div style="font-size:48px;margin-bottom:8px;">🥜</div>
+                <p>点击下方按钮开始检测</p>
+            </div>
+        </div>
+
+        <div class="result-display" id="resultDisplay"></div>
+        <div class="deepseek-box" id="deepseekBox"></div>
+
+        <button class="action-btn" id="detectBtn">开始检测</button>
+        <button class="action-btn secondary-btn" id="historyBtn">查看检测历史</button>
+    </div>
+
+    <script>
+        // 初始化PixiJS粒子背景
+        const app = new PIXI.Application({
+            resizeTo: window,
+            backgroundAlpha: 0,
+            antialias: true
+        });
+        document.getElementById('game-canvas').appendChild(app.view);
+
+        // 创建流动粒子背景
+        const particles = [];
+        for (let i = 0; i < 80; i++) {
+            const g = new PIXI.Graphics();
+            g.circle(0, 0, Math.random() * 2 + 0.5);
+            g.fill({ color: Math.random() > 0.5 ? 0x00f5d4 : 0x9b5de5, alpha: Math.random() * 0.5 + 0.2 });
+            g.x = Math.random() * app.screen.width;
+            g.y = Math.random() * app.screen.height;
+            g.vx = (Math.random() - 0.5) * 0.5;
+            g.vy = (Math.random() - 0.5) * 0.5;
+            app.stage.addChild(g);
+            particles.push(g);
+        }
+
+        // 粒子动画循环
+        app.ticker.add(() => {
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = app.screen.width;
+                if (p.x > app.screen.width) p.x = 0;
+                if (p.y < 0) p.y = app.screen.height;
+                if (p.y > app.screen.height) p.y = 0;
+            });
+        });
+
+        // 检测流程逻辑
+        const detectBtn = document.getElementById('detectBtn');
+        const scanArea = document.getElementById('scanArea');
+        const resultDisplay = document.getElementById('resultDisplay');
+        const deepseekBox = document.getElementById('deepseekBox');
+
+        detectBtn.addEventListener('click', async () => {
+            detectBtn.disabled = true;
+            detectBtn.textContent = '检测中...';
+            scanArea.classList.add('scanning');
+            resultDisplay.style.display = 'none';
+            deepseekBox.style.display = 'none';
+
+            // 模拟3秒三波段扫描检测
+            setTimeout(async () => {
+                scanArea.classList.remove('scanning');
+                // 模拟随机检测结果（实际对接本地模型）
+                const isMoldy = Math.random() > 0.5;
+                resultDisplay.textContent = isMoldy ? '⚠️ 检测结果：存在黄曲霉污染风险' : '✅ 检测结果：花生状态正常';
+                resultDisplay.className = `result-display ${isMoldy ? 'result-moldy' : 'result-normal'}`;
+                resultDisplay.style.display = 'block';
+
+                // 结果粒子爆发特效（游戏级反馈）
+                const rect = resultDisplay.getBoundingClientRect();
+                const color = isMoldy ? '#e53935' : '#43a047';
+                for (let i = 0; i < 30; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'burst-particle';
+                    p.style.left = rect.left + rect.width/2 + 'px';
+                    p.style.top = rect.top + rect.height/2 + 'px';
+                    p.style.background = color;
+                    p.style.boxShadow = `0 0 8px ${color}`;
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 60 + Math.random() * 100;
+                    p.style.setProperty('--x', Math.cos(angle) * distance + 'px');
+                    p.style.setProperty('--y', Math.sin(angle) * distance + 'px');
+                    document.body.appendChild(p);
+                    setTimeout(() => p.remove(), 1200);
+                }
+
+                // DeepSeek智能解读对话
+                deepseekBox.style.display = 'block';
+                deepseekBox.textContent = 'DeepSeek正在分析检测结果...';
+                const confidence = (Math.random()*15 + 83).toFixed(1);
+                // 模拟DeepSeek实时打字对话效果
+                setTimeout(() => {
+                    let reply = '';
+                    if (isMoldy) {
+                        reply = `🤖 DeepSeek: 您好，本次检测显示该花生样本存在轻度黄曲霉污染风险，置信度${confidence}%。建议您立即将该样本与其他储存坚果分离，置于通风干燥处单独存放；若样本已出现肉眼可见霉斑，请不要食用，长期摄入微量黄曲霉毒素会对肝脏造成不可逆损伤。后续建议将储存环境湿度控制在60%以下，每周定期复检。`;
+                    } else {
+                        reply = `🤖 DeepSeek: 您好，本次检测显示该花生样本状态正常，无黄曲霉污染风险，置信度${confidence}%。建议您继续将坚果置于阴凉干燥、避光密封环境储存，避免高温高湿环境，每2-3周抽查一次即可，可放心食用。`;
+                    }
+                    // 打字机效果模拟实时对话
+                    let i = 0;
+                    const timer = setInterval(() => {
+                        deepseekBox.textContent = reply.slice(0, i);
+                        i += 3;
+                        if (i > reply.length) clearInterval(timer);
+                    }, 30);
+                }, 800);
+
+                detectBtn.disabled = false;
+                detectBtn.textContent = '再次检测';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
