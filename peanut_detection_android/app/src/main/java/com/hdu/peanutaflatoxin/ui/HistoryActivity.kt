@@ -27,6 +27,13 @@ class HistoryActivity : AppCompatActivity() {
         val records = dbHelper.getAllRecords()
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
+        if (records.isEmpty()) {
+            container.addView(TextView(this).apply {
+                text = "暂无历史记录"
+                textSize = 16f
+            })
+        }
+
         records.forEach { record ->
             val itemView = layoutInflater.inflate(R.layout.item_history, null)
             itemView.findViewById<TextView>(R.id.tv_time).text = sdf.format(Date(record.timestamp.toLong()))

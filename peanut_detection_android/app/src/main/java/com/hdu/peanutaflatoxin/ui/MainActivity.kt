@@ -21,6 +21,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResult: TextView
     private lateinit var tvConfidence: TextView
     private lateinit var progress: ProgressBar
+    private lateinit var detectButton: Button
+    private lateinit var historyButton: Button
 
     private val pickImageLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -40,6 +42,8 @@ class MainActivity : AppCompatActivity() {
         tvResult = findViewById(R.id.tv_result)
         tvConfidence = findViewById(R.id.tv_confidence)
         progress = findViewById(R.id.progress)
+        detectButton = findViewById(R.id.btn_detect)
+        historyButton = findViewById(R.id.btn_history)
 
         // 首次启动弹出隐私政策
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
@@ -47,11 +51,11 @@ class MainActivity : AppCompatActivity() {
             showPrivacyDialog()
         }
 
-        findViewById<Button>(R.id.btn_detect).setOnClickListener {
+        detectButton.setOnClickListener {
             openGallery()
         }
 
-        findViewById<Button>(R.id.btn_history).setOnClickListener {
+        historyButton.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
     }
@@ -78,6 +82,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startAnalysis(uri: Uri) {
+        if (!detectButton.isEnabled) return
+        detectButton.isEnabled = false
+        historyButton.isEnabled = false
         progress.visibility = ProgressBar.VISIBLE
         tvResult.text = ""
         tvConfidence.text = ""
@@ -87,17 +94,23 @@ class MainActivity : AppCompatActivity() {
                 val features = FeatureExtractor.extractFromUri(this, uri)
                 // 2. 本地推理
                 val res = inference.classify(features)
+                // 历史记录成功保存后才展示结果，避免显示无法查询的结果。
+                if (dbHelper.insertRecord(uri.toString(), res.isMoldy, res.moldyProb) == -1L) {
+                    throw IllegalStateException("无法保存历史记录")
+                }
                 runOnUiThread {
                     progress.visibility = ProgressBar.GONE
+                    detectButton.isEnabled = true
+                    historyButton.isEnabled = true
                     tvResult.text = "模型演示结果（未经验证）"
                     tvResult.setTextColor(getColor(R.color.black))
                     tvConfidence.text = "模型输出分数：${"%.1f".format(res.moldyProb * 100)}%"
                 }
-                // 3. 保存历史
-                dbHelper.insertRecord(uri.toString(), res.isMoldy, res.moldyProb)
             } catch (e: Exception) {
                 runOnUiThread {
                     progress.visibility = ProgressBar.GONE
+                    detectButton.isEnabled = true
+                    historyButton.isEnabled = true
                     Toast.makeText(this, "检测失败：${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }

@@ -12,34 +12,45 @@ import preferences from '@ohos.data.preferences'
 struct Index {
   @State result: string = ''
   @State confidence: number = 0
+  @State hasScore: boolean = false
   @State isAnalyzing: boolean = false
+  @State isReady: boolean = false
   private inference: LgbmInference = new LgbmInference()
   private historyDb: HistoryDb = new HistoryDb()
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext
 
   async aboutToAppear() {
-    // 初始化数据库
-    await this.historyDb.init(this.context)
-    // 首次启动弹出隐私政策
-    const agreed = await preferences.getPreferences(this.context, 'app_prefs')
-    if (!await agreed.get('privacy_agreed', false)) {
-      this.showPrivacyDialog()
+    try {
+      await this.historyDb.init(this.context)
+      const agreed = await preferences.getPreferences(this.context, 'app_prefs')
+      if (!await agreed.get('privacy_agreed', false)) {
+        const accepted = await this.showPrivacyDialog()
+        if (!accepted) {
+          this.result = '请同意隐私说明后重新打开应用'
+          return
+        }
+      }
+      this.isReady = true
+    } catch (e) {
+      this.result = '初始化失败，请重启应用'
     }
   }
 
-  private showPrivacyDialog() {
-    promptAction.showDialog({
+  private async showPrivacyDialog(): Promise<boolean> {
+    const choice = await promptAction.showDialog({
       title: '隐私政策',
       message: '本应用所有检测数据均仅存储在您的手机本地，不会上传任何图像或个人信息到服务器。',
       buttons: [{ text: '同意', color: '#007aff' }]
-    }).then(async () => {
-      const pref = await preferences.getPreferences(this.context, 'app_prefs')
-      await pref.put('privacy_agreed', true)
-      await pref.flush()
     })
+    if (choice.index !== 0) return false
+    const pref = await preferences.getPreferences(this.context, 'app_prefs')
+    await pref.put('privacy_agreed', true)
+    await pref.flush()
+    return true
   }
 
   async startDetect() {
+    if (this.isAnalyzing) return
     try {
       const photoPicker = new picker.PhotoViewPicker()
       const res = await photoPicker.select({
@@ -47,7 +58,7 @@ struct Index {
         maxSelectNumber: 1
       })
       if (res.photoUris.length > 0) {
-        this.analyzeImage(res.photoUris[0])
+        await this.analyzeImage(res.photoUris[0])
       }
     } catch (e) {
       promptAction.showToast({ message: '请先授予相册权限' })
@@ -56,6 +67,8 @@ struct Index {
 
   async analyzeImage(uri: string) {
     this.isAnalyzing = true
+    this.result = ''
+    this.hasScore = false
     try {
       // 1. 端侧提取16维特征
       const features = await featureExtractor.extract(uri, this.context)
@@ -70,6 +83,7 @@ struct Index {
         isMoldy: res.isMoldy,
         confidence: res.moldyProb
       })
+      this.hasScore = true
     } catch (e) {
       this.result = '检测失败，请重试'
       promptAction.showToast({ message: '图片处理失败，请更换清晰照片' })
@@ -79,6 +93,7 @@ struct Index {
   }
 
   build() {
+    Scroll() {
     Column({ space: 24 }) {
       Text('坚果黄曲霉实时检测系统')
         .fontSize(28)
@@ -105,9 +120,11 @@ struct Index {
           .fontSize(20)
           .fontColor('#333333')
           .fontWeight(FontWeight.Medium)
+        if (this.hasScore) {
         Text(`模型输出分数：${(this.confidence * 100).toFixed(1)}%`)
           .fontSize(16)
           .fontColor('#666')
+        }
       }
 
       if (this.isAnalyzing) {
@@ -120,6 +137,7 @@ struct Index {
         .width(280)
         .height(50)
         .fontSize(18)
+        .enabled(this.isReady && !this.isAnalyzing)
         .onClick(() => {
           this.startDetect()
         })
@@ -130,6 +148,7 @@ struct Index {
         .fontSize(16)
         .backgroundColor('#eeeeee')
         .fontColor('#333')
+        .enabled(this.isReady && !this.isAnalyzing)
         .onClick(() => {
           router.pushUrl({ url: 'pages/History' })
         })
@@ -140,7 +159,9 @@ struct Index {
         .margin({ top: 40 })
     }
     .width('100%')
-    .height('100%')
     .alignItems(HorizontalAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
   }
 }

@@ -6,18 +6,27 @@ class FeatureExtractorImpl {
   async extract(uri: string, context: common.UIAbilityContext): Promise<number[]> {
     // 1. 解码图片
     const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY)
-    const source = image.createImageSource(file.fd)
-    const pixelMap = await source.createPixelMap({
-      desiredSize: { width: 256, height: 256 },
-      desiredPixelFormat: image.PixelMapFormat.RGBA_8888
-    })
-
+    let pixelBytes: ArrayBuffer = new ArrayBuffer(0)
+    try {
+      const source = image.createImageSource(file.fd)
+      try {
+        const pixelMap = await source.createPixelMap({
+          desiredSize: { width: 256, height: 256 },
+          desiredPixelFormat: image.PixelMapFormat.RGBA_8888
+        })
+        try {
+          pixelBytes = new ArrayBuffer(pixelMap.getPixelBytesNumber())
+          await pixelMap.readPixelsToBuffer(pixelBytes)
+        } finally {
+          await pixelMap.release()
+        }
+      } finally {
+        await source.release()
+      }
+    } finally {
+      fileIo.closeSync(file.fd)
+    }
     // 2. 获取像素数据
-    const pixelBytes = new ArrayBuffer(pixelMap.getPixelBytesNumber())
-    await pixelMap.readPixelsToBuffer(pixelBytes)
-    await pixelMap.release()
-    await source.release()
-    fileIo.closeSync(file.fd)
     const pixels = new Uint8Array(pixelBytes)
 
     // 3. 演示用近似特征，与训练流程尚未对齐

@@ -34,7 +34,7 @@ export class HistoryDb {
   }
 
   async insert(record: NewHistoryRecord) {
-    if (!this.store) return;
+    if (!this.store) throw new Error('历史记录尚未初始化');
     const valueBucket: relationalStore.ValuesBucket = {
       'timestamp': record.timestamp,
       'image_uri': record.imageUri,
@@ -45,7 +45,7 @@ export class HistoryDb {
   }
 
   async getAll(): Promise<HistoryRecord[]> {
-    if (!this.store) return [];
+    if (!this.store) throw new Error('历史记录尚未初始化');
     const result: relationalStore.ResultSet = await this.store.querySql('SELECT * FROM history ORDER BY timestamp DESC');
     const list: HistoryRecord[] = [];
     while (result.goToNextRow()) {
