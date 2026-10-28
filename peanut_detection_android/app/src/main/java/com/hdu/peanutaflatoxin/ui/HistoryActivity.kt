@@ -42,4 +42,9 @@ class HistoryActivity : AppCompatActivity() {
             container.addView(itemView)
         }
     }
+
+    override fun onDestroy() {
+        if (::dbHelper.isInitialized) dbHelper.close()
+        super.onDestroy()
+    }
 }

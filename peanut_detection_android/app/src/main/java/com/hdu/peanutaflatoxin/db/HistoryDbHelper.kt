@@ -65,16 +65,17 @@ class HistoryDbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, nul
             "$COL_TIMESTAMP DESC"
         )
         val list = mutableListOf<HistoryRecord>()
-        while (cursor.moveToNext()) {
-            list.add(HistoryRecord(
-                id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
-                timestamp = cursor.getString(cursor.getColumnIndexOrThrow(COL_TIMESTAMP)),
-                imageUri = cursor.getString(cursor.getColumnIndexOrThrow(COL_IMAGE_URI)),
-                isMoldy = cursor.getInt(cursor.getColumnIndexOrThrow(COL_IS_MOLDY)) == 1,
-                confidence = cursor.getDouble(cursor.getColumnIndexOrThrow(COL_CONFIDENCE))
-            ))
+        cursor.use { rows ->
+            while (rows.moveToNext()) {
+                list.add(HistoryRecord(
+                    id = rows.getLong(rows.getColumnIndexOrThrow(COL_ID)),
+                    timestamp = rows.getString(rows.getColumnIndexOrThrow(COL_TIMESTAMP)),
+                    imageUri = rows.getString(rows.getColumnIndexOrThrow(COL_IMAGE_URI)),
+                    isMoldy = rows.getInt(rows.getColumnIndexOrThrow(COL_IS_MOLDY)) == 1,
+                    confidence = rows.getDouble(rows.getColumnIndexOrThrow(COL_CONFIDENCE))
+                ))
+            }
         }
-        cursor.close()
         return list
     }
 }

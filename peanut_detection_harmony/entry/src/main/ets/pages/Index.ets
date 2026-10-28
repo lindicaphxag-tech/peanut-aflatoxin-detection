@@ -52,6 +52,7 @@ struct Index {
 
   async startDetect() {
     if (this.isAnalyzing) return
+    this.isAnalyzing = true
     try {
       const photoPicker = new picker.PhotoViewPicker()
       const res = await photoPicker.select({
@@ -63,6 +64,8 @@ struct Index {
       }
     } catch (e) {
       promptAction.showToast({ message: '无法打开图片选择器，请重试' })
+    } finally {
+      this.isAnalyzing = false
     }
   }
 

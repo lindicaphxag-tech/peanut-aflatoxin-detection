@@ -10,15 +10,14 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import com.hdu.peanutaflatoxin.R
-import com.hdu.peanutaflatoxin.db.HistoryDbHelper
-import com.hdu.peanutaflatoxin.ml.LgbmInference
-import com.hdu.peanutaflatoxin.util.FeatureExtractor
-import kotlin.concurrent.thread
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var inference: LgbmInference
-    private lateinit var dbHelper: HistoryDbHelper
+    private val analysisViewModel: AnalysisViewModel by viewModels()
     private lateinit var tvResult: TextView
     private lateinit var tvConfidence: TextView
     private lateinit var progress: ProgressBar
@@ -27,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imagePreview: ImageView
 
     private val pickImageLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { result ->
+        analysisViewModel.finishImagePicking()
         if (result.resultCode == RESULT_OK) {
             result.data?.data?.let { uri ->
                 startAnalysis(uri)
@@ -38,15 +38,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 初始化核心组件
-        inference = LgbmInference(this)
-        dbHelper = HistoryDbHelper(this)
         tvResult = findViewById(R.id.tv_result)
         tvConfidence = findViewById(R.id.tv_confidence)
         progress = findViewById(R.id.progress)
         detectButton = findViewById(R.id.btn_detect)
         historyButton = findViewById(R.id.btn_history)
         imagePreview = findViewById(R.id.image_preview)
+
+        lifecycleScope.launch {
+            analysisViewModel.uiState.collect(::renderAnalysisState)
+        }
 
         // 首次启动弹出隐私政策
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
@@ -77,48 +78,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openGallery() {
+        if (!analysisViewModel.beginImagePicking()) return
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "image/*"
             addCategory(Intent.CATEGORY_OPENABLE)
         }
-        pickImageLauncher.launch(intent)
+        try {
+            pickImageLauncher.launch(intent)
+        } catch (e: Exception) {
+            analysisViewModel.finishImagePicking()
+            Toast.makeText(this, getString(R.string.analysis_failed, e.message ?: "无法打开图片选择器"), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun startAnalysis(uri: Uri) {
-        if (!detectButton.isEnabled) return
-        detectButton.isEnabled = false
-        historyButton.isEnabled = false
-        progress.visibility = ProgressBar.VISIBLE
-        tvResult.text = ""
-        tvConfidence.text = ""
-        imagePreview.setImageDrawable(null)
-        thread {
-            try {
-                // 1. 提取特征
-                val extracted = FeatureExtractor.extractWithPreview(this, uri)
-                // 2. 本地推理
-                val res = inference.classify(extracted.features)
-                // 历史记录成功保存后才展示结果，避免显示无法查询的结果。
-                if (dbHelper.insertRecord(uri.toString(), res.isMoldy, res.moldyProb) == -1L) {
-                    throw IllegalStateException("无法保存历史记录")
-                }
-                runOnUiThread {
-                    progress.visibility = ProgressBar.GONE
-                    detectButton.isEnabled = true
-                    historyButton.isEnabled = true
-                    tvResult.text = getString(R.string.demo_result)
-                    imagePreview.setImageBitmap(extracted.preview)
-                    tvResult.setTextColor(getColor(R.color.black))
-                    tvConfidence.text = getString(R.string.model_score, res.moldyProb * 100)
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    progress.visibility = ProgressBar.GONE
-                    detectButton.isEnabled = true
-                    historyButton.isEnabled = true
-                    Toast.makeText(this, getString(R.string.analysis_failed, e.message ?: "未知错误"), Toast.LENGTH_SHORT).show()
-                }
+        analysisViewModel.analyze(uri)
+    }
+
+    private fun renderAnalysisState(state: AnalysisUiState) {
+        val buttonsEnabled = !state.isAnalyzing && !state.isPickingImage
+        detectButton.isEnabled = buttonsEnabled
+        historyButton.isEnabled = buttonsEnabled
+        progress.visibility = if (state.isAnalyzing) ProgressBar.VISIBLE else ProgressBar.GONE
+
+        state.preview?.let {
+            imagePreview.setImageBitmap(it)
+            tvResult.text = getString(R.string.demo_result)
+            tvResult.setTextColor(getColor(R.color.black))
+            tvConfidence.text = getString(R.string.model_score, (state.score ?: 0.0) * 100)
+        } ?: run {
+            if (state.isAnalyzing) {
+                tvResult.text = ""
+                tvConfidence.text = ""
+                imagePreview.setImageDrawable(null)
             }
+        }
+
+        state.error?.let {
+            Toast.makeText(this, getString(R.string.analysis_failed, it), Toast.LENGTH_SHORT).show()
+            analysisViewModel.clearError()
         }
     }
 }

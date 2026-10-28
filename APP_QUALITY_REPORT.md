@@ -1,27 +1,28 @@
-# App verification report
+# App quality and verification report
 
 Date: 2026-10-28
 
-## Scope
+## Scope and scientific limits
 
-Verification covers the Android and OpenHarmony app projects only. The Android app is an offline image-analysis demo. Its hand-built image features do not match the preprocessing used to train the included model, and the model has not been validated on laboratory-labelled peanut samples. Its output is not an aflatoxin measurement and must not be used to decide food safety.
+Verification covers the Android and OpenHarmony app projects only. Android performs offline image analysis using hand-built color/texture features and the bundled demonstration model. Those image features do not match the preprocessing used to train the model, and the model has not been validated on laboratory-labelled peanut samples. Its score is not an aflatoxin concentration and must not be used to make food-safety decisions.
 
-## Results
+## Verification results
 
-- Android `testDebugUnitTest`: **33 executions, 0 failures, 0 errors**. The 11 Robolectric test methods ran on API 26, 28, and 34. Coverage includes screen launch, image-picker intent, valid and unreadable image handling, finite 16-feature extraction, bounded image decode size, model input/threshold validation, a reference scaler/model inference value, result persistence/display, history display, and refusal to upgrade the history database without a migration.
-- Android `lintDebug`: **0 errors, 10 warnings**. The remaining warnings are eight dependency-version suggestions and two intentional background overdraw reports. No Android instrumentation or physical-device test ran.
-- Android `assembleDebug`: **success**. The generated debug APK uses the standard debug signing key; `apksigner` verified its v2 signature and AAPT read its package and SDK metadata.
-- OpenHarmony `assembleHap` (API 10 project): **success**; the HAP archive opens and contains the expected module resources. The SDK emitted `No signingConfig found for product default`; the resulting HAP is unsigned and is not installable as delivered. No Harmony emulator or physical device test ran. The project SDK also reports that the `phone` device type is unsupported by that SDK version.
+- Android `testDebugUnitTest`: **39 executions, 0 failures, 0 errors**. Thirteen Robolectric test methods ran on API 26, 28, and 34. They cover launch, picker behavior and rapid taps, bounded image decoding, finite feature extraction, model reference output and invalid-input rejection, successful and failed image workflows, UI state restoration after Activity recreation, result persistence, history display, and safe refusal of an unsupported database upgrade.
+- Android `lintDebug`: **0 errors, 10 warnings**. Eight dependency update suggestions and two potential root-background overdraw notices remain. These are not build blockers; dependency upgrades need compatibility review.
+- Android `assembleDebug`: **success**. APK package metadata reports min SDK 26 and target SDK 34. `apksigner` verified its v2 debug signature. No Android emulator or physical device was attached (`adb devices -l` was empty); runtime checks are JVM/Robolectric only.
+- OpenHarmony `assembleHap` for the checked-in API 10 project: **success**. The HAP archive was generated, but Hvigor reported `No signingConfig found for product default`; it is unsigned and cannot be installed as delivered. No OpenHarmony emulator or phone runtime test was available. This is not an API 12 build.
 
-## App changes checked
+## Changes in this verification pass
 
-- Added input and scaler validation and capped Android bitmap decode dimensions before resizing.
-- Added tests that cover success and failure paths for image selection and inference.
-- Removed destructive database upgrade behavior; until a migration is written, upgrades fail without dropping history.
-- Added Android cloud-backup and device-transfer exclusions for private app data, including Android 12+ extraction rules. See the [Android backup configuration guidance](https://developer.android.com/about/versions/12/behavior-changes-12#backup-restore).
-- Corrected Android history row inflation so the parent layout parameters are applied, and moved visible Android labels into string resources.
-- Clearly identify both app outputs as an unvalidated demo and avoid calling the score an aflatoxin concentration.
+- Moved Android image analysis from an Activity-owned raw thread into an `AndroidViewModel` coroutine using `Dispatchers.IO` and observable state, so Activity recreation does not retain a destroyed screen or launch a second analysis.
+- Added picker/analyzing state guards and error recovery, and close database helpers/results on lifecycle exit.
+- Added lifecycle tests and explicit activity teardown to the Robolectric suite.
+- Preserved user history by refusing an unimplemented database migration rather than dropping the table.
+- Kept the demo-only disclaimer visible; do not infer toxin concentration or safety from this model output.
 
-## Remaining validation
+## What these tests establish
 
-This verification establishes buildability and deterministic app logic only. It does not establish analytical sensitivity, specificity, calibration, repeatability, device equivalence, or food-safety performance. Those claims require a frozen preprocessing/model pipeline, independent laboratory-labelled samples, a predefined evaluation protocol, and suitable near-infrared hardware. Device installation, picker permission behavior across OEMs, rotation/process-death behavior, Harmony signing, and Harmony runtime behavior remain unverified.
+The tests establish deterministic app logic, resource lifecycle behavior under Robolectric, basic input validation, and successful compilation of both platform projects with the available local SDKs. They do not establish behavior on OEM Android builds, Android 15/16, HarmonyOS/OpenHarmony devices, picker permission behavior across vendors, performance or memory under real workloads, analytical sensitivity/specificity, concentration calibration, repeatability, or food-safety suitability.
+
+For scientific validation, freeze the spectrum/image acquisition protocol and preprocessing, use independent peanut samples with reference laboratory measurements, pre-register split strategy and metrics, report calibration and external validation separately, and test device/batch transfer. Do not train/test split repeated measurements from the same physical sample across both folds.

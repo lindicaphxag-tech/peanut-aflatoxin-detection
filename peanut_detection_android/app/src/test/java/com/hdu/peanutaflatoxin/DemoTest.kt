@@ -22,10 +22,12 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertThrows
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
@@ -35,22 +37,51 @@ import java.io.FileNotFoundException
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [26, 28, 34])
 class DemoTest {
+    private val activityControllers = mutableListOf<ActivityController<out Activity>>()
+
+    private fun <T : Activity> launchActivity(activityClass: Class<T>): T {
+        val controller = Robolectric.buildActivity(activityClass).setup()
+        activityControllers.add(controller)
+        return controller.get()
+    }
+
+    @After
+    fun destroyActivities() {
+        activityControllers.asReversed().forEach { controller ->
+            runCatching { controller.pause().stop().destroy() }
+        }
+        activityControllers.clear()
+    }
+
     @Test
     fun mainScreenStarts() {
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity(MainActivity::class.java)
         assertEquals("运行模型演示", activity.findViewById<android.widget.Button>(R.id.btn_detect).text.toString())
         assertEquals("坚果图像分析演示", activity.getString(R.string.app_name))
     }
 
     @Test
     fun mainScreenCanScrollAndOpensSystemImagePicker() {
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity(MainActivity::class.java)
         val scrollId = activity.resources.getIdentifier("main_scroll", "id", activity.packageName)
         assertTrue(scrollId != 0 && activity.findViewById<ScrollView>(scrollId) is ScrollView)
         activity.findViewById<android.widget.Button>(R.id.btn_detect).performClick()
         val intent = Shadows.shadowOf(activity).nextStartedActivity
         assertEquals(Intent.ACTION_GET_CONTENT, intent.action)
         assertEquals("image/*", intent.type)
+    }
+
+    @Test
+    fun rapidPickerTapsLaunchOnlyOnePicker() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE).edit().putBoolean("privacy_agreed", true).commit()
+        val activity = launchActivity(MainActivity::class.java)
+        val button = activity.findViewById<Button>(R.id.btn_detect)
+        button.performClick()
+        button.performClick()
+        val shadow = Shadows.shadowOf(activity)
+        assertEquals(Intent.ACTION_GET_CONTENT, shadow.nextStartedActivity.action)
+        assertEquals(null, shadow.nextStartedActivity)
     }
 
     @Test
@@ -103,7 +134,7 @@ class DemoTest {
         Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
             .compress(Bitmap.CompressFormat.PNG, 100, bytes)
         Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(uri) { ByteArrayInputStream(bytes.toByteArray()) }
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity(MainActivity::class.java)
         val button = activity.findViewById<Button>(R.id.btn_detect)
         button.performClick()
         val shadow = Shadows.shadowOf(activity)
@@ -120,7 +151,42 @@ class DemoTest {
         assertTrue(button.isEnabled)
         val previewId = activity.resources.getIdentifier("image_preview", "id", activity.packageName)
         assertTrue(previewId != 0 && activity.findViewById<ImageView>(previewId).drawable != null)
-        assertEquals(1, HistoryDbHelper(context).getAllRecords().size)
+        val historyDb = HistoryDbHelper(activity.applicationContext)
+        try {
+            assertEquals(1, historyDb.getAllRecords().size)
+        } finally {
+            historyDb.close()
+        }
+    }
+
+    @Test
+    fun analysisStateSurvivesActivityRecreation() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase(HistoryDbHelper.DB_NAME)
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE).edit().putBoolean("privacy_agreed", true).commit()
+        val uri = Uri.parse("content://demo/rotation")
+        val bytes = ByteArrayOutputStream()
+        Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
+            .compress(Bitmap.CompressFormat.PNG, 100, bytes)
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(uri) { ByteArrayInputStream(bytes.toByteArray()) }
+
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        activityControllers.add(controller)
+        val activity = controller.get()
+        activity.findViewById<Button>(R.id.btn_detect).performClick()
+        val pickerIntent = Shadows.shadowOf(activity).nextStartedActivityForResult.intent
+        Shadows.shadowOf(activity).receiveResult(pickerIntent, Activity.RESULT_OK, Intent().setData(uri))
+
+        val recreatedActivity = controller.recreate().get()
+        val result = recreatedActivity.findViewById<TextView>(R.id.tv_result)
+        val deadline = System.nanoTime() + 10_000_000_000L
+        while (result.text.isEmpty() && System.nanoTime() < deadline) {
+            Thread.sleep(20)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(result.text.toString().contains("未经验证"))
+        assertTrue(recreatedActivity.findViewById<Button>(R.id.btn_detect).isEnabled)
     }
 
     @Test
@@ -132,7 +198,7 @@ class DemoTest {
         Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(uri) {
             throw FileNotFoundException("unavailable")
         }
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity(MainActivity::class.java)
         val button = activity.findViewById<Button>(R.id.btn_detect)
         button.performClick()
         val shadow = Shadows.shadowOf(activity)
@@ -145,7 +211,12 @@ class DemoTest {
         }
         assertTrue(button.isEnabled)
         assertEquals("", activity.findViewById<TextView>(R.id.tv_result).text.toString())
-        assertTrue(HistoryDbHelper(context).getAllRecords().isEmpty())
+        val historyDb = HistoryDbHelper(context)
+        try {
+            assertTrue(historyDb.getAllRecords().isEmpty())
+        } finally {
+            historyDb.close()
+        }
     }
 
     @Test
@@ -158,7 +229,7 @@ class DemoTest {
         } finally {
             db.close()
         }
-        val activity = Robolectric.buildActivity(HistoryActivity::class.java).setup().get()
+        val activity = launchActivity(HistoryActivity::class.java)
         assertEquals(1, activity.findViewById<LinearLayout>(R.id.rv_history).childCount)
     }
 
@@ -166,7 +237,7 @@ class DemoTest {
     fun emptyHistoryExplainsThereAreNoRecords() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase(HistoryDbHelper.DB_NAME)
-        val activity = Robolectric.buildActivity(HistoryActivity::class.java).setup().get()
+        val activity = launchActivity(HistoryActivity::class.java)
         val container = activity.findViewById<LinearLayout>(R.id.rv_history)
         assertEquals(1, container.childCount)
         assertEquals("暂无历史记录", (container.getChildAt(0) as TextView).text.toString())

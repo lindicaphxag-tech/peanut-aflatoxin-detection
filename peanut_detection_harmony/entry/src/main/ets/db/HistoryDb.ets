@@ -48,17 +48,20 @@ export class HistoryDb {
     if (!this.store) throw new Error('历史记录尚未初始化');
     const result: relationalStore.ResultSet = await this.store.querySql('SELECT * FROM history ORDER BY timestamp DESC');
     const list: HistoryRecord[] = [];
-    while (result.goToNextRow()) {
-      const record: HistoryRecord = {
-        id: result.getLong(result.getColumnIndex('id')),
-        timestamp: result.getLong(result.getColumnIndex('timestamp')),
-        imageUri: result.getString(result.getColumnIndex('image_uri')),
-        isMoldy: result.getLong(result.getColumnIndex('is_moldy')) === 1,
-        confidence: result.getDouble(result.getColumnIndex('confidence'))
-      };
-      list.push(record);
+    try {
+      while (result.goToNextRow()) {
+        const record: HistoryRecord = {
+          id: result.getLong(result.getColumnIndex('id')),
+          timestamp: result.getLong(result.getColumnIndex('timestamp')),
+          imageUri: result.getString(result.getColumnIndex('image_uri')),
+          isMoldy: result.getLong(result.getColumnIndex('is_moldy')) === 1,
+          confidence: result.getDouble(result.getColumnIndex('confidence'))
+        };
+        list.push(record);
+      }
+    } finally {
+      result.close();
     }
-    result.close();
     return list;
   }
 }
