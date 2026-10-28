@@ -12,6 +12,7 @@ Verification covers the Android and OpenHarmony app projects only. Android perfo
 - Android `lintDebug`: **0 errors, 10 warnings**. Eight dependency update suggestions and two potential root-background overdraw notices remain. These are not build blockers; dependency upgrades need compatibility review.
 - Android `assembleDebug`: **success**. APK package metadata reports min SDK 26 and target SDK 34. `apksigner` verified its v2 debug signature. No Android emulator or physical device was attached (`adb devices -l` was empty); runtime checks are JVM/Robolectric only.
 - OpenHarmony `assembleHap` for the checked-in API 10 project: **success**. The HAP archive was generated, but Hvigor reported `No signingConfig found for product default`; it is unsigned and cannot be installed as delivered. No OpenHarmony emulator or phone runtime test was available. This is not an API 12 build.
+- Added `.github/workflows/android-ci.yml` to run Android unit tests, lint, APK assembly, and upload reports/artifact on pushes and pull requests. The workflow YAML parsed locally; GitHub Actions has not run it yet because this branch has not been pushed with an authorized GitHub identity.
 
 ## Changes in this verification pass
 
