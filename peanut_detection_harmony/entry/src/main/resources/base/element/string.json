@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "坚果黄曲霉检测模块"
+      "value": "坚果图像分析演示模块"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "坚果黄曲霉实时检测"
+      "value": "坚果图像分析演示"
     },
     {
       "name": "EntryAbility_label",
-      "value": "坚果黄曲霉检测"
+      "value": "坚果图像分析演示"
     }
   ]
 }

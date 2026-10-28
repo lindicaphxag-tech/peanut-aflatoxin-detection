@@ -20,6 +20,9 @@ class LgbmInference(context: android.content.Context) {
         val scaleArr = scalerObj.getJSONArray("scale_")
         means = DoubleArray(meanArr.length()) { meanArr.getDouble(it) }
         scales = DoubleArray(scaleArr.length()) { scaleArr.getDouble(it) }
+        require(means.isNotEmpty() && means.size == scales.size && means.all { it.isFinite() } && scales.all { it.isFinite() && it > 0 }) {
+            "模型标准化参数无效"
+        }
 
         val modelJson = context.assets.open("lgbm_model.json").bufferedReader().use { it.readText() }
         val modelObj = JSONObject(modelJson)
@@ -27,10 +30,12 @@ class LgbmInference(context: android.content.Context) {
         treeRoots = List(treeInfo.length()) { i ->
             treeInfo.getJSONObject(i).getJSONObject("tree_structure")
         }
+        require(treeRoots.isNotEmpty()) { "模型没有决策树" }
     }
 
     private fun transform(features: DoubleArray): DoubleArray {
         require(features.size == means.size) { "Feature dim mismatch: expect ${means.size}, got ${features.size}" }
+        require(features.all { it.isFinite() }) { "图片特征包含无效值" }
         return DoubleArray(features.size) { (features[it] - means[it]) / scales[it] }
     }
 
@@ -67,6 +72,7 @@ class LgbmInference(context: android.content.Context) {
     )
 
     fun classify(features: DoubleArray, threshold: Double = 0.5): ClassifyResult {
+        require(threshold.isFinite() && threshold in 0.0..1.0) { "阈值无效" }
         val prob = predictProba(features)
         return ClassifyResult(
             isMoldy = prob >= threshold,

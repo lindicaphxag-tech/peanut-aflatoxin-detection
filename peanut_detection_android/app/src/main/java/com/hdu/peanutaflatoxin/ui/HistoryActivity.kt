@@ -29,16 +29,16 @@ class HistoryActivity : AppCompatActivity() {
 
         if (records.isEmpty()) {
             container.addView(TextView(this).apply {
-                text = "暂无历史记录"
+                text = getString(R.string.empty_history)
                 textSize = 16f
             })
         }
 
         records.forEach { record ->
-            val itemView = layoutInflater.inflate(R.layout.item_history, null)
+            val itemView = layoutInflater.inflate(R.layout.item_history, container, false)
             itemView.findViewById<TextView>(R.id.tv_time).text = sdf.format(Date(record.timestamp.toLong()))
-            itemView.findViewById<TextView>(R.id.tv_result).text = "模型演示结果（未经验证）"
-            itemView.findViewById<TextView>(R.id.tv_confidence).text = "模型输出分数：${"%.1f".format(record.confidence * 100)}%"
+            itemView.findViewById<TextView>(R.id.tv_result).text = getString(R.string.demo_result)
+            itemView.findViewById<TextView>(R.id.tv_confidence).text = getString(R.string.model_score, record.confidence * 100)
             container.addView(itemView)
         }
     }

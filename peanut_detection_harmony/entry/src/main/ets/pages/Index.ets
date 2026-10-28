@@ -98,7 +98,7 @@ struct Index {
   build() {
     Scroll() {
     Column({ space: 24 }) {
-      Text('坚果黄曲霉实时检测系统')
+      Text('坚果图像分析演示')
         .fontSize(28)
         .fontWeight(FontWeight.Bold)
         .margin({ top: 60 })

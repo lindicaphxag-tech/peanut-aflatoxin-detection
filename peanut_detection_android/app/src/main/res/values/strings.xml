@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">坚果黄曲霉检测</string>
+    <string name="app_name">坚果图像分析演示</string>
+    <string name="research_notice">研究演示：图像特征与模型尚待验证</string>
+    <string name="image_preview">所选图片预览</string>
+    <string name="run_demo">运行模型演示</string>
+    <string name="view_history">查看检测历史</string>
+    <string name="food_safety_disclaimer">*演示结果不能用于判断食品安全，请以实验室检测为准</string>
+    <string name="back">返回</string>
+    <string name="history_title">检测历史</string>
+    <string name="empty_history">暂无历史记录</string>
+    <string name="demo_result">模型演示结果（未经验证）</string>
+    <string name="model_score">模型输出分数：%1$.1f%%</string>
+    <string name="privacy_title">隐私政策</string>
+    <string name="privacy_message">本应用所有检测数据均仅存储在您的手机本地，不会上传任何图像或个人信息到服务器。使用本应用即代表您同意上述隐私条款。</string>
+    <string name="privacy_accept">同意并继续</string>
+    <string name="analysis_failed">检测失败：%1$s</string>
 </resources>

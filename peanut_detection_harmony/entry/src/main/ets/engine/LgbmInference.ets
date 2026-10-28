@@ -14,7 +14,7 @@ export interface ClassifyResult { isMoldy: boolean; confidence: number; moldyPro
 
 /**
  * LightGBM端侧纯ArkTS推理引擎
- * 直接遍历树结构完成推理，无原生依赖，适配HarmonyOS API 12+
+ * 直接遍历树结构完成推理，无原生依赖。
  */
 export class LgbmInference {
   private means: number[] = scalerParams.mean_
@@ -22,10 +22,18 @@ export class LgbmInference {
   private treeInfo: TreeInfo[] = (lgbmModel as TreeModel).tree_info
 
   constructor() {
+    if (this.means.length === 0 || this.means.length !== this.scales.length ||
+      this.means.some((v: number) => !Number.isFinite(v)) ||
+      this.scales.some((v: number) => !Number.isFinite(v) || v <= 0) || this.treeInfo.length === 0) {
+      throw new Error('模型参数无效')
+    }
     console.info(`LgbmInference init: ${this.treeInfo.length} trees`)
   }
 
   private transform(features: number[]): number[] {
+    if (features.length !== this.means.length || features.some((v: number) => !Number.isFinite(v))) {
+      throw new Error('图片特征无效')
+    }
     return features.map((v, i) => (v - this.means[i]) / this.scales[i])
   }
 
@@ -51,6 +59,7 @@ export class LgbmInference {
   }
 
   public classify(features: number[], threshold: number = 0.5): ClassifyResult {
+    if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) throw new Error('阈值无效')
     const prob = this.predictProba(features)
     return {
       isMoldy: prob >= threshold,

@@ -65,10 +65,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPrivacyDialog() {
         AlertDialog.Builder(this)
-            .setTitle("隐私政策")
-            .setMessage("本应用所有检测数据均仅存储在您的手机本地，不会上传任何图像或个人信息到服务器。使用本应用即代表您同意上述隐私条款。")
+            .setTitle(R.string.privacy_title)
+            .setMessage(R.string.privacy_message)
             .setCancelable(false)
-            .setPositiveButton("同意并继续") { dialog, _ ->
+            .setPositiveButton(R.string.privacy_accept) { dialog, _ ->
                 getSharedPreferences("app_prefs", MODE_PRIVATE).edit()
                     .putBoolean("privacy_agreed", true).apply()
                 dialog.dismiss()
@@ -106,17 +106,17 @@ class MainActivity : AppCompatActivity() {
                     progress.visibility = ProgressBar.GONE
                     detectButton.isEnabled = true
                     historyButton.isEnabled = true
-                    tvResult.text = "模型演示结果（未经验证）"
+                    tvResult.text = getString(R.string.demo_result)
                     imagePreview.setImageBitmap(extracted.preview)
                     tvResult.setTextColor(getColor(R.color.black))
-                    tvConfidence.text = "模型输出分数：${"%.1f".format(res.moldyProb * 100)}%"
+                    tvConfidence.text = getString(R.string.model_score, res.moldyProb * 100)
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     progress.visibility = ProgressBar.GONE
                     detectButton.isEnabled = true
                     historyButton.isEnabled = true
-                    Toast.makeText(this, "检测失败：${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.analysis_failed, e.message ?: "未知错误"), Toast.LENGTH_SHORT).show()
                 }
             }
         }

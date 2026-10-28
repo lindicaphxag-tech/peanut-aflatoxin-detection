@@ -38,8 +38,8 @@ class HistoryDbHelper(context: Context) : SQLiteOpenHelper(context, DB_NAME, nul
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        db?.execSQL("DROP TABLE IF EXISTS $TABLE_NAME")
-        onCreate(db)
+        // Preserve user history until a version-specific migration is implemented.
+        throw IllegalStateException("数据库版本 $oldVersion → $newVersion 缺少迁移，已拒绝升级以保留历史记录")
     }
 
     fun insertRecord(imageUri: String, isMoldy: Boolean, confidence: Double): Long {

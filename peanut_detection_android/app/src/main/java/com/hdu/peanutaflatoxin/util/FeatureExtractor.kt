@@ -13,13 +13,23 @@ import kotlin.math.sqrt
 object FeatureExtractor {
     data class ExtractedImage(val features: DoubleArray, val preview: Bitmap)
 
+    fun sampleSizeFor(width: Int, height: Int): Int {
+        require(width > 0 && height > 0) { "图片尺寸无效" }
+        val largest = maxOf(width, height).toLong()
+        var sample = 1
+        while (largest > 1024L * sample) sample *= 2
+        return sample
+    }
+
     fun extractFromUri(context: Context, uri: Uri): DoubleArray = extractWithPreview(context, uri).features
 
     fun extractWithPreview(context: Context, uri: Uri): ExtractedImage {
         // 1. 解码图片并缩放到256x256，减小内存占用
-        val options = BitmapFactory.Options().apply {
-            inSampleSize = 4
-        }
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        val boundsStream = context.contentResolver.openInputStream(uri)
+            ?: throw IllegalArgumentException("无法读取图片")
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight) }
         val inputStream = context.contentResolver.openInputStream(uri)
             ?: throw IllegalArgumentException("无法读取图片")
         val bitmap = inputStream.use { BitmapFactory.decodeStream(it, null, options) }

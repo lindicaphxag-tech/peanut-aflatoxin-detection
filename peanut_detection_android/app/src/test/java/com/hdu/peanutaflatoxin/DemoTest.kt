@@ -21,6 +21,7 @@ import com.hdu.peanutaflatoxin.util.FeatureExtractor
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -32,12 +33,13 @@ import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
+@Config(sdk = [26, 28, 34])
 class DemoTest {
     @Test
     fun mainScreenStarts() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         assertEquals("运行模型演示", activity.findViewById<android.widget.Button>(R.id.btn_detect).text.toString())
+        assertEquals("坚果图像分析演示", activity.getString(R.string.app_name))
     }
 
     @Test
@@ -61,6 +63,23 @@ class DemoTest {
     }
 
     @Test
+    fun modelRejectsNonFiniteFeaturesAndInvalidThreshold() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val model = LgbmInference(context)
+        assertThrows(IllegalArgumentException::class.java) { model.predictProba(DoubleArray(16) { Double.NaN }) }
+        assertThrows(IllegalArgumentException::class.java) { model.classify(DoubleArray(16), Double.NaN) }
+        assertThrows(IllegalArgumentException::class.java) { model.classify(DoubleArray(16), 1.1) }
+    }
+
+    @Test
+    fun largeImagesAreDecodedAtABoundedSize() {
+        val method = FeatureExtractor::class.java.declaredMethods.firstOrNull { it.name == "sampleSizeFor" }
+        assertTrue(method != null)
+        val sample = method!!.invoke(FeatureExtractor, 16000, 12000) as Int
+        assertTrue(sample >= 16 && 16000 / sample <= 1024 && 12000 / sample <= 1024)
+    }
+
+    @Test
     fun selectedImageProducesFiniteFeatureVector() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val uri = Uri.parse("content://demo/test-image")
@@ -68,7 +87,7 @@ class DemoTest {
         bitmap.eraseColor(Color.RED)
         val bytes = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
-        Shadows.shadowOf(context.contentResolver).registerInputStream(uri, ByteArrayInputStream(bytes.toByteArray()))
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(uri) { ByteArrayInputStream(bytes.toByteArray()) }
         val features = FeatureExtractor.extractFromUri(context, uri)
         assertEquals(16, features.size)
         assertTrue(features.all { it.isFinite() })
@@ -83,7 +102,7 @@ class DemoTest {
         val bytes = ByteArrayOutputStream()
         Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.RED) }
             .compress(Bitmap.CompressFormat.PNG, 100, bytes)
-        Shadows.shadowOf(context.contentResolver).registerInputStream(uri, ByteArrayInputStream(bytes.toByteArray()))
+        Shadows.shadowOf(context.contentResolver).registerInputStreamSupplier(uri) { ByteArrayInputStream(bytes.toByteArray()) }
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         val button = activity.findViewById<Button>(R.id.btn_detect)
         button.performClick()
@@ -151,5 +170,19 @@ class DemoTest {
         val container = activity.findViewById<LinearLayout>(R.id.rv_history)
         assertEquals(1, container.childCount)
         assertEquals("暂无历史记录", (container.getChildAt(0) as TextView).text.toString())
+    }
+
+    @Test
+    fun unknownDatabaseUpgradeDoesNotDeleteHistory() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase(HistoryDbHelper.DB_NAME)
+        val helper = HistoryDbHelper(context)
+        try {
+            helper.insertRecord("content://demo/preserved", false, 0.3)
+            assertThrows(IllegalStateException::class.java) { helper.onUpgrade(helper.writableDatabase, 1, 2) }
+            assertEquals(1, helper.getAllRecords().size)
+        } finally {
+            helper.close()
+        }
     }
 }

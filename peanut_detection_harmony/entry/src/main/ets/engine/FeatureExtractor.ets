@@ -28,6 +28,7 @@ class FeatureExtractorImpl {
     }
     // 2. 获取像素数据
     const pixels = new Uint8Array(pixelBytes)
+    if (pixels.length === 0 || pixels.length % 4 !== 0) throw new Error('图片像素数据无效')
 
     // 3. 演示用近似特征，与训练流程尚未对齐
     const grayValues: number[] = []
