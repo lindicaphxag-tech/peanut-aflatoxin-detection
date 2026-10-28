@@ -10,8 +10,8 @@ Verification covers the Android and OpenHarmony app projects only. The Android a
 
 - Android `testDebugUnitTest`: **33 executions, 0 failures, 0 errors**. The 11 Robolectric test methods ran on API 26, 28, and 34. Coverage includes screen launch, image-picker intent, valid and unreadable image handling, finite 16-feature extraction, bounded image decode size, model input/threshold validation, a reference scaler/model inference value, result persistence/display, history display, and refusal to upgrade the history database without a migration.
 - Android `lintDebug`: **0 errors, 10 warnings**. The remaining warnings are eight dependency-version suggestions and two intentional background overdraw reports. No Android instrumentation or physical-device test ran.
-- Android `assembleDebug`: **success**. The generated debug APK uses the standard debug signing key.
-- OpenHarmony `assembleHap` (API 10 project): **success**. The SDK emitted `No signingConfig found for product default`; the resulting HAP is unsigned and is not installable as delivered. No Harmony emulator or physical device test ran. The project SDK also reports that the `phone` device type is unsupported by that SDK version.
+- Android `assembleDebug`: **success**. The generated debug APK uses the standard debug signing key; `apksigner` verified its v2 signature and AAPT read its package and SDK metadata.
+- OpenHarmony `assembleHap` (API 10 project): **success**; the HAP archive opens and contains the expected module resources. The SDK emitted `No signingConfig found for product default`; the resulting HAP is unsigned and is not installable as delivered. No Harmony emulator or physical device test ran. The project SDK also reports that the `phone` device type is unsupported by that SDK version.
 
 ## App changes checked
 
