@@ -15,6 +15,8 @@
 ## 当前状态
 两端应用目前是研究演示，手机端特征提取与模型训练流程尚未对齐，模型输出不能用于判断食品安全。仓库中暂未提供可复核的独立测试集、实验室标签和设备校准数据，因此性能指标尚待验证。实际食品安全判断应以实验室检测为准。
 
+Android 历史页可导出演示记录 JSON。新记录包含模型与标准化参数文件的 SHA-256、处理流程版本和 256×256 灰度像素摘要；旧记录的缺失字段保留为空。导出不包含图片 URI、原图或光谱，不能单独用于完整实验复现。鸿蒙端尚未实现该导出与追溯功能。
+
 ## 构建演示应用
 
 - Android：安装 JDK 17、Android SDK 34 和构建工具 34.0.0；在 `peanut_detection_android` 运行 `gradlew.bat assembleDebug`（Windows）或 `./gradlew assembleDebug`。调试 APK 位于 `app/build/outputs/apk/debug/`。

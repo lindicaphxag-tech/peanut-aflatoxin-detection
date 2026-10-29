@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import java.security.MessageDigest
 
 data class AnalysisUiState(
     val isAnalyzing: Boolean = false,
@@ -29,6 +30,20 @@ data class AnalysisUiState(
 /** Retains an in-flight analysis across Activity recreation without retaining the Activity. */
 class AnalysisViewModel(application: Application) : AndroidViewModel(application) {
     private val inference by lazy { LgbmInference(getApplication()) }
+    private fun assetSha256(name: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        getApplication<Application>().assets.open(name).use { stream ->
+            val buffer = ByteArray(8192)
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+    private val modelSha256 by lazy { assetSha256("lgbm_model.json") }
+    private val scalerSha256 by lazy { assetSha256("scaler_params.json") }
     private val dbHelperDelegate = lazy { HistoryDbHelper(getApplication()) }
     private val dbHelper by dbHelperDelegate
 
@@ -56,7 +71,8 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
                     currentCoroutineContext().ensureActive()
                     val result = inference.classify(extracted.features)
                     currentCoroutineContext().ensureActive()
-                    if (dbHelper.insertRecord(uri.toString(), result.isMoldy, result.moldyProb) == -1L) {
+                    if (dbHelper.insertRecord(uri.toString(), result.isMoldy, result.moldyProb,
+                            modelSha256, scalerSha256, FeatureExtractor.PIPELINE_VERSION, extracted.inputSha256) == -1L) {
                         throw IllegalStateException("无法保存历史记录")
                     }
                     extracted.preview to result.moldyProb

@@ -26,9 +26,11 @@
             android:textSize="20sp"
             android:textStyle="bold"
             android:gravity="center"/>
-        <View
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"/>
+        <Button
+            android:id="@+id/btn_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/export_history"/>
     </LinearLayout>
 
     <ScrollView

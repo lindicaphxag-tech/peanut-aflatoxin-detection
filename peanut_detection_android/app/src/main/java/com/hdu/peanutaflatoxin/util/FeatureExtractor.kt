@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 import kotlin.math.sqrt
 
 /**
@@ -11,7 +13,8 @@ import kotlin.math.sqrt
  * 当前为演示用的近似特征；与训练脚本不一致，不能用于安全判断。
  */
 object FeatureExtractor {
-    data class ExtractedImage(val features: DoubleArray, val preview: Bitmap)
+    const val PIPELINE_VERSION = "android-grayscale-256-demo-v1"
+    data class ExtractedImage(val features: DoubleArray, val preview: Bitmap, val inputSha256: String)
 
     fun sampleSizeFor(width: Int, height: Int): Int {
         require(width > 0 && height > 0) { "图片尺寸无效" }
@@ -53,7 +56,10 @@ object FeatureExtractor {
         // 拼接16维特征向量
         return ExtractedImage(
             features = doubleArrayOf(*grayStats, *glcm, *localStd, *morph),
-            preview = scaled
+            preview = scaled,
+            inputSha256 = MessageDigest.getInstance("SHA-256").digest(
+                ByteBuffer.allocate(pixels.size * 4).apply { pixels.forEach { putInt(it) } }.array()
+            ).joinToString("") { "%02x".format(it) }
         )
     }
 

@@ -9,6 +9,9 @@
     <string name="back">返回</string>
     <string name="history_title">检测历史</string>
     <string name="empty_history">暂无历史记录</string>
+    <string name="export_history">导出</string>
+    <string name="export_complete">历史记录已导出</string>
+    <string name="export_failed">导出失败：%1$s</string>
     <string name="demo_result">模型演示结果（未经验证）</string>
     <string name="model_score">模型输出分数：%1$.1f%%</string>
     <string name="privacy_title">隐私政策</string>

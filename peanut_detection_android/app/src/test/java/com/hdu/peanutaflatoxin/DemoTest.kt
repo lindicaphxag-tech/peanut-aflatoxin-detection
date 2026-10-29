@@ -153,7 +153,15 @@ class DemoTest {
         assertTrue(previewId != 0 && activity.findViewById<ImageView>(previewId).drawable != null)
         val historyDb = HistoryDbHelper(activity.applicationContext)
         try {
-            assertEquals(1, historyDb.getAllRecords().size)
+            val records = historyDb.getAllRecords()
+            assertEquals(1, records.size)
+            val record = records.single()
+            val sha256 = Regex("[0-9a-f]{64}")
+            assertTrue(record.modelSha256?.matches(sha256) == true)
+            assertTrue(record.scalerSha256?.matches(sha256) == true)
+            assertTrue(record.inputSha256?.matches(sha256) == true)
+            assertEquals(FeatureExtractor.PIPELINE_VERSION, record.pipelineVersion)
+            assertEquals(FeatureExtractor.extractWithPreview(context, uri).inputSha256, record.inputSha256)
         } finally {
             historyDb.close()
         }
@@ -234,6 +242,15 @@ class DemoTest {
     }
 
     @Test
+    fun exportUsesSystemDocumentPicker() {
+        val activity = launchActivity(HistoryActivity::class.java)
+        activity.findViewById<Button>(R.id.btn_export).performClick()
+        val intent = Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(Intent.ACTION_CREATE_DOCUMENT, intent.action)
+        assertEquals("application/json", intent.type)
+    }
+
+    @Test
     fun emptyHistoryExplainsThereAreNoRecords() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         context.deleteDatabase(HistoryDbHelper.DB_NAME)
@@ -250,7 +267,7 @@ class DemoTest {
         val helper = HistoryDbHelper(context)
         try {
             helper.insertRecord("content://demo/preserved", false, 0.3)
-            assertThrows(IllegalStateException::class.java) { helper.onUpgrade(helper.writableDatabase, 1, 2) }
+            assertThrows(IllegalStateException::class.java) { helper.onUpgrade(helper.writableDatabase, 2, 3) }
             assertEquals(1, helper.getAllRecords().size)
         } finally {
             helper.close()
