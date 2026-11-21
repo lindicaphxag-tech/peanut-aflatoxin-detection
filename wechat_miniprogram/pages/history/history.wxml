@@ -1,0 +1,148 @@
+<!--pages/history/history.wxml-->
+<view class="container">
+  <view class="aurora aurora-1"></view>
+
+  <view class="topbar">
+    <view class="brand">
+      <view class="brand-mark"><view class="bm-dot"></view></view>
+      <text class="brand-text">ARCHIVE</text>
+    </view>
+    <view wx:if="{{list.length}}" class="clear press" bindtap="clearHistory">清空</view>
+  </view>
+
+  <view class="page-head">
+    <text class="h1">检测档案</text>
+    <text class="h2">本地保存最近 100 次判定</text>
+  </view>
+
+  <!-- 统计 -->
+  <view class="stats">
+    <view class="stat glass">
+      <text class="stat-n">{{totalCount}}</text>
+      <text class="stat-k">总检测</text>
+    </view>
+    <view class="stat glass">
+      <text class="stat-n t-ok">{{safeCount}}</text>
+      <text class="stat-k">正常</text>
+    </view>
+    <view class="stat glass">
+      <text class="stat-n t-risk">{{moldCount}}</text>
+      <text class="stat-k">霉变</text>
+    </view>
+    <view class="stat glass">
+      <text class="stat-n">{{safeRate}}%</text>
+      <text class="stat-k">合格率</text>
+    </view>
+  </view>
+
+  <!-- 近 7 天趋势 -->
+  <block wx:if="{{weekTotal > 0}}">
+    <view class="section-title">TREND · 近 7 天</view>
+    <view class="trend glass">
+      <view class="trend-head">
+        <text class="trend-t">{{weekTotal}} 次检测</text>
+        <text class="trend-s">其中霉变 {{weekMold}} 次</text>
+      </view>
+      <view class="trend-bars">
+        <view wx:for="{{trend}}" wx:key="key" class="tcol">
+          <view class="tbar-wrap">
+            <view class="tbar ok" style="height: {{item.okPct}}%"></view>
+            <view class="tbar mold" style="height: {{item.moldPct}}%"></view>
+          </view>
+          <text class="tlabel {{item.isToday ? 'is-today' : ''}}">{{item.label}}</text>
+        </view>
+      </view>
+      <view class="legend">
+        <view class="lg"><view class="lg-dot ok"></view><text class="lg-t">正常</text></view>
+        <view class="lg"><view class="lg-dot mold"></view><text class="lg-t">霉变</text></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 列表 -->
+  <block wx:if="{{list.length}}">
+    <view class="section-title rec-head">
+      <text class="rec-label">RECORDS · 记录</text>
+      <view class="export press" bindtap="exportCsv">导出 CSV</view>
+    </view>
+
+    <view class="filters">
+      <view class="chip-track">
+        <view class="chip-pill" style="transform: translateX({{filterIndex * 100}}%)"></view>
+        <view class="fchip {{filter === 'all' ? 'on' : ''}}" data-f="all" bindtap="setFilter">全部 {{totalCount}}</view>
+        <view class="fchip {{filter === 'ok' ? 'on' : ''}}" data-f="ok" bindtap="setFilter">正常 {{safeCount}}</view>
+        <view class="fchip {{filter === 'risk' ? 'on' : ''}}" data-f="risk" bindtap="setFilter">霉变 {{moldCount}}</view>
+      </view>
+      <view class="fsep"></view>
+      <view class="sortbtn {{sort === 'time' ? 'on' : ''}}" data-s="time" bindtap="setSort">时间</view>
+      <view class="sortbtn {{sort === 'risk' ? 'on' : ''}}" data-s="risk" bindtap="setSort">风险</view>
+    </view>
+    <view wx:for="{{groups}}" wx:key="date" class="tgroup">
+      <view class="tdate">
+        <view class="tdot"></view>
+        <text class="tdate-t">{{item.date}}</text>
+        <text class="tdate-n">{{item.items.length}} 条<text wx:if="{{item.mold}}"> · 霉变 {{item.mold}}</text></text>
+      </view>
+      <view class="tline"></view>
+      <view
+        wx:for="{{item.items}}"
+        wx:for-item="row"
+        wx:key="time"
+        class="row glass press {{row.status === 'moldy' ? 'row-risk' : 'row-ok'}}"
+        data-item="{{row}}"
+        data-time="{{row.time}}"
+        bindtap="showDetail"
+        bindlongpress="onDelete"
+      >
+        <image
+          wx:if="{{row.imagePath && !row.imgBroken}}"
+          src="{{row.imagePath}}"
+          mode="aspectFill"
+          class="row-img"
+          data-index="{{index}}"
+          binderror="onImgError"
+        />
+        <view wx:else class="row-img row-img-empty {{row.status === 'moldy' ? 'ph-risk' : 'ph-ok'}}">
+          <view class="ph-dot"></view>
+        </view>
+        <view class="row-body">
+          <text class="row-res {{row.status === 'moldy' ? 't-risk' : 't-ok'}}">{{row.result || (row.status === 'moldy' ? '霉变' : '正常')}}</text>
+          <text class="row-time">{{row.time}}</text>
+        </view>
+        <view class="row-right">
+          <text class="row-conf">{{row.confidence}}%</text>
+          <view class="row-arrow"></view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view wx:if="{{list.length && !viewList.length}}" class="filter-empty glass">
+    <text class="fe-t">该筛选下没有记录</text>
+    <text class="fe-s">换个筛选条件试试</text>
+  </view>
+
+  <!-- 空态 -->
+  <view wx:if="{{!list.length}}" class="empty glass">
+    <view class="empty-ring"><view class="empty-dot"></view></view>
+    <text class="empty-t">还没有记录</text>
+    <text class="empty-s">去拍第一张样本，结果会自动存在这里</text>
+    <view class="empty-btn press" bindtap="goDetect">开始检测</view>
+  </view>
+
+  <!-- 详情 -->
+  <view wx:if="{{showDetailModal}}" class="modal" bindtap="hideDetail">
+    <view class="modal-card glass" catchtap="noop">
+      <view class="modal-head">
+        <text class="modal-t">检测详情</text>
+        <view class="modal-x press" bindtap="hideDetail"></view>
+      </view>
+      <image wx:if="{{detailItem.imagePath}}" src="{{detailItem.imagePath}}" mode="aspectFit" class="modal-img"/>
+      <view wx:else class="modal-img modal-img-empty">该记录没有保存图片</view>
+      <view class="modal-row"><text class="mk">判定</text><text class="mv {{detailItem.status === 'moldy' ? 't-risk' : 't-ok'}}">{{detailItem.result || (detailItem.status === 'moldy' ? '霉变' : '正常')}}</text></view>
+      <view class="modal-row"><text class="mk">置信度</text><text class="mv">{{detailItem.confidence}}%</text></view>
+      <view class="modal-row"><text class="mk">时间</text><text class="mv">{{detailItem.time}}</text></view>
+      <text class="modal-note">记录仅保存在本机，用于回顾与复检。</text>
+    </view>
+  </view>
+</view>

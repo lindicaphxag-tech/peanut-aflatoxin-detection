@@ -1,0 +1,322 @@
+<!--pages/index/index.wxml-->
+<view class="container">
+  <view class="aurora aurora-1"></view>
+  <view class="aurora aurora-2"></view>
+  <view class="grid-bg"></view>
+
+  <!-- 顶部：品牌 + 服务状态 -->
+  <view class="topbar">
+    <view class="brand">
+      <view class="brand-mark"><view class="bm-dot"></view></view>
+      <text class="brand-text">NUT·SCAN</text>
+    </view>
+    <view class="chip {{serverOnline === true ? 'chip-on' : (serverOnline === false ? 'chip-off' : 'chip-wait')}}">
+      <view class="chip-dot"></view>
+      <text class="chip-text">{{serverOnline === true ? '服务在线' : (serverOnline === false ? '服务离线' : '连接中')}}</text>
+    </view>
+  </view>
+
+  <!-- 3D 全息扫描区 -->
+  <view class="hero">
+    <view class="stage">
+      <view class="hologram">
+        <view class="disc disc-a"></view>
+        <view class="disc disc-b"></view>
+        <view class="disc disc-c"></view>
+        <view class="beam"></view>
+        <view class="peanut-float">
+          <view class="peanut">
+            <view class="lobe lobe-top"></view>
+            <view class="lobe lobe-bottom"></view>
+            <view class="waist"></view>
+            <view class="shell"></view>
+            <view class="gloss"></view>
+          </view>
+          <view class="peanut-shadow"></view>
+        </view>
+        <view class="ripple r1"></view>
+        <view class="ripple r2"></view>
+        <view class="ripple r3"></view>
+        <view class="sweep"></view>
+        <view class="particles">
+          <view class="pt p1"></view><view class="pt p2"></view><view class="pt p3"></view>
+          <view class="pt p4"></view><view class="pt p5"></view><view class="pt p6"></view>
+          <view class="pt p7"></view><view class="pt p8"></view>
+        </view>
+        <view class="scan-bar"></view>
+      </view>
+    </view>
+
+    <view class="hero-copy">
+      <text class="kicker">PEANUT MOLD DETECTION</text>
+      <text class="h1">拍一张，看出霉变</text>
+      <text class="h2">近红外单通道 · 正常 / 发霉</text>
+    </view>
+  </view>
+
+  <!-- 离线提示 -->
+  <view wx:if="{{serverOnline === false}}" class="offline glass">
+    <view class="offline-body">
+      <text class="offline-title">未连上推理服务</text>
+      <text class="offline-hint">请先运行「一键启动后端」，地址 {{apiBase}}</text>
+    </view>
+    <view class="offline-btn press" bindtap="retryBackend">重试</view>
+  </view>
+
+  <!-- 最近一次检测 -->
+  <view wx:if="{{lastResult}}" class="last glass press" bindtap="goHistory">
+    <view class="last-left">
+      <text class="last-k">最近一次</text>
+      <text class="last-v {{lastTone}}">{{lastResult}}</text>
+      <text class="last-t">{{lastTime}}</text>
+    </view>
+    <view class="last-right">
+      <text class="last-c">{{lastConfidence}}%</text>
+      <text class="last-h">今日 {{todayCount}} 次 · 查看档案 ›</text>
+    </view>
+  </view>
+
+  <!-- 取样区 -->
+  <view class="section-title">SAMPLE · 取样</view>
+  <view class="shoot glass press" bindtap="chooseImage">
+    <image wx:if="{{imagePath}}" src="{{imagePath}}" mode="aspectFill" class="shoot-img"/>
+    <view wx:else class="shoot-empty">
+      <view class="target">
+        <view class="target-corner tl"></view>
+        <view class="target-corner tr"></view>
+        <view class="target-corner bl"></view>
+        <view class="target-corner br"></view>
+        <text class="target-txt">把花生放进取景框</text>
+      </view>
+      <text class="shoot-hint">点击选择图片 · JPG / PNG</text>
+    </view>
+    <view wx:if="{{isDetecting}}" class="shoot-scan"></view>
+  </view>
+
+  <!-- 三个入口 -->
+  <view class="quick">
+    <view class="quick-item glass press" bindtap="takePhoto">
+      <view class="miniico mi-cam"><view class="p1"></view><view class="p2"></view></view>
+      <text class="quick-txt">选图</text>
+    </view>
+    <view class="quick-item glass press" bindtap="chooseImage">
+      <view class="miniico mi-album"><view class="p1"></view><view class="p2"></view></view>
+      <text class="quick-txt">相册</text>
+    </view>
+    <view class="quick-item glass press" bindtap="batchDetect">
+      <view class="miniico mi-batch"><view class="p1"></view><view class="p2"></view><view class="p3"></view><view class="p4"></view></view>
+      <text class="quick-txt">批量</text>
+    </view>
+  </view>
+
+  <!-- 主按钮 -->
+  <view class="cta {{isDetecting ? 'cta-busy' : ''}} press" bindtap="{{isDetecting ? '' : 'detect'}}">
+    <view class="cta-icon">
+      <view class="cta-ring"></view>
+      <view class="cta-dot"></view>
+    </view>
+    <text class="cta-txt">{{isDetecting ? 'AI 分析中…' : '开始检测'}}</text>
+    <view class="cta-border"></view>
+    <view class="cta-glow"></view>
+  </view>
+
+  <!-- 分析中：全屏扫描遮罩 + 四步进度 -->
+  <view wx:if="{{isDetecting}}" class="analyzing">
+    <view class="scan-grid"></view>
+    <view class="scan-sweep"></view>
+    <view class="ana-card glass">
+      <view class="ana-orbit"><view class="ana-core"></view></view>
+      <text class="ana-title">正在分析样本</text>
+      <view class="ana-steps">
+        <view class="step-row {{anaStep >= 1 ? 'on' : ''}}">
+          <view class="sdot"></view><text class="stext">图像预处理 · 灰度化 + 居中裁剪</text>
+        </view>
+        <view class="step-row {{anaStep >= 2 ? 'on' : ''}}">
+          <view class="sdot"></view><text class="stext">缩放 224×224 · 归一化</text>
+        </view>
+        <view class="step-row {{anaStep >= 3 ? 'on' : ''}}">
+          <view class="sdot"></view><text class="stext">MobileNetV3 前向推理</text>
+        </view>
+        <view class="step-row {{anaStep >= 4 ? 'on' : ''}}">
+          <view class="sdot"></view><text class="stext">p(mold) 与阈值比较</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 批量结果 -->
+  <block wx:if="{{batchResults.length > 0}}">
+    <view class="section-title">BATCH · 批次结果（{{batchResults.length}}）</view>
+    <view class="batch-sum glass">
+      <view class="bs-item">
+        <text class="bs-n">{{batchTotal}}</text>
+        <text class="bs-k">本次张数</text>
+      </view>
+      <view class="bs-sep"></view>
+      <view class="bs-item">
+        <text class="bs-n t-risk">{{batchMoldCount}}</text>
+        <text class="bs-k">霉变</text>
+      </view>
+      <view class="bs-sep"></view>
+      <view class="bs-item">
+        <text class="bs-n t-ok">{{batchOkCount}}</text>
+        <text class="bs-k">正常</text>
+      </view>
+      <view class="bs-sep"></view>
+      <view class="bs-item">
+        <text class="bs-n">{{batchAvgConf}}%</text>
+        <text class="bs-k">平均置信度</text>
+      </view>
+    </view>
+    <view wx:if="{{batchFailCount > 0}}" class="batch-warn">有 {{batchFailCount}} 张检测失败，可点按重试</view>
+
+    <view class="batch">
+      <view
+        wx:for="{{batchResults}}"
+        wx:key="index"
+        class="batch-cell cell-in {{item.failed ? 'is-fail' : (item.classIndex > 0 ? 'is-risk' : 'is-ok')}}"
+        style="animation-delay: {{index * 70}}ms"
+      >
+        <image src="{{item.imagePath}}" mode="aspectFill" class="batch-img"/>
+        <view class="batch-overlay">
+          <text class="batch-tag {{item.failed ? '' : (item.classIndex > 0 ? 'tag-risk' : 'tag-ok')}}">{{item.result}}</text>
+          <text class="batch-conf">{{item.failed ? '—' : item.confidence + '%'}}</text>
+        </view>
+        <view wx:if="{{!item.failed}}" class="conf-bar {{item.classIndex > 0 ? 'cb-risk' : 'cb-ok'}}" style="height: {{item.confidence}}%"></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 单张结果 -->
+  <block wx:if="{{result}}">
+    <view class="section-title">RESULT · 判定</view>
+    <view class="result {{showResult ? 'result-in' : ''}} {{classIndex === 0 ? 'aura-ok' : (classIndex === 1 ? 'aura-warn' : 'aura-risk')}}">
+      <view class="result-aura"></view>
+      <view class="verdict {{classIndex === 0 ? 'v-ok' : (classIndex === 1 ? 'v-warn' : 'v-risk')}} {{decisionTone === 'unknown' ? 'v-hold' : ''}}">
+        <view class="verdict-left">
+          <text class="verdict-k">判定结果</text>
+          <text class="verdict-v">{{result}}</text>
+          <text class="verdict-s">{{decisionTone === 'unknown' ? 'p(mold) 贴近阈值，建议换图复核' : (classIndex === 0 ? '未检出可见霉变' : '检出可见霉变')}}</text>
+        </view>
+        <view class="gauge">
+          <view class="gauge-ring" style="background: conic-gradient({{classIndex === 0 ? '#58c9a3' : (classIndex === 1 ? '#f0b429' : '#ff7a63')}} {{confidenceShown}}%, rgba(255,255,255,0.08) {{confidenceShown}}% 100%);"></view>
+          <view class="gauge-hole">
+            <text class="gauge-num">{{confidenceShown}}</text>
+            <text class="gauge-unit">%</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="decision dec-{{decisionTone}}">
+        <view class="dec-dot"></view>
+        <view class="dec-body">
+          <text class="dec-label">{{decision}}</text>
+          <text class="dec-hint">{{decisionHint}}</text>
+        </view>
+      </view>
+
+      <view class="bars glass">
+        <view class="pm-head">
+          <text class="pm-k">发霉概率 p<text class="pm-sub">(mold)</text></text>
+          <text class="pm-v {{moldyProb >= thrPct ? 'pm-bad' : 'pm-good'}}">{{moldyProb}}%</text>
+        </view>
+        <view class="pm-track">
+          <view class="pm-fill {{moldyProb >= thrPct ? 'pm-fill-bad' : 'pm-fill-good'}}" style="width: {{moldyProb}}%"></view>
+          <view class="pm-thr" style="left: {{thrPct}}%"></view>
+        </view>
+        <view class="pm-scale">
+          <text class="pm-s">0%</text>
+          <text class="pm-s pm-thr-label">判定阈值 {{thrPct}}%</text>
+          <text class="pm-s">100%</text>
+        </view>
+        <view class="pm-note">p(mold) ≥ 阈值判为发霉；阈值取自验证集（recall ≥ 0.95）。</view>
+
+      </view>
+
+      <view class="advice glass {{classIndex > 0 ? 'adv-risk' : 'adv-ok'}}">
+        <view class="adv-bar"></view>
+        <view class="adv-body">
+          <text class="adv-t">{{classIndex > 0 ? '处理建议' : '质量评估'}}</text>
+          <text class="adv-c">{{classIndex > 0 ? '单独挑出丢弃，勿与完好样品混放；霉变意味着产毒风险升高，高温烹饪无法破坏黄曲霉毒素。' : '未检出可见霉变。仍建议密封、避光、干燥储存，防止受潮。'}}</text>
+        </view>
+      </view>
+
+      <view wx:if="{{neighbors.length}}" class="nb glass">
+        <view class="nb-head">
+          <text class="nb-title">最像的历史样本</text>
+          <text class="nb-sub">来自 {{refCount}} 张参考集</text>
+        </view>
+        <view class="nb-row">
+          <view wx:for="{{neighbors}}" wx:key="index" class="nb-item">
+            <image class="nb-img" src="data:image/jpeg;base64,{{item.thumb}}" mode="aspectFill"/>
+            <text class="nb-sim">{{item.similarity}}%</text>
+            <text class="nb-label">{{item.label}}</text>
+          </view>
+        </view>
+        <view class="nb-ano">
+          <view class="nb-ano-head">
+            <text class="nb-ano-k">异常分数</text>
+            <text class="nb-ano-v">{{anomalyScore}}</text>
+          </view>
+          <view class="nb-ano-track">
+            <view class="nb-ano-fill {{anomalyScore >= 70 ? 'ano-high' : (anomalyScore >= 45 ? 'ano-mid' : 'ano-low')}}" style="width: {{anomalyScore}}%"></view>
+          </view>
+          <text class="nb-ano-note">越高越偏离“正常”样本分布；这是辅助信号，不单独决定结论。</text>
+        </view>
+      </view>
+
+      <view class="why glass">
+        <view class="why-head press" bindtap="toggleWhy">
+          <text class="why-title">为什么是这个结论？</text>
+          <text class="why-arrow {{showWhy ? 'up' : ''}}">⌄</text>
+        </view>
+        <view wx:if="{{showWhy}}" class="why-body">
+          <view class="why-row"><text class="why-k">最高类概率</text><text class="why-v">{{confidenceShown}}%</text></view>
+          <view class="why-row"><text class="why-k">与次高类相差</text><text class="why-v">{{margin}} 个百分点</text></view>
+          <view class="why-row"><text class="why-k">当前阈值</text><text class="why-v">可信 ≥{{thHigh}}% 且差 ≥{{thMargin}}；无法判断 &lt;{{thLow}}%</text></view>
+          <view class="why-rule {{decisionTone}}">
+            <text class="why-rule-t">命中规则</text>
+            <text class="why-rule-c">{{decisionRule}}</text>
+          </view>
+          <text class="why-note">三态判定只依据模型给出的三类概率，不引入额外模型；阈值可在「关于」页调整。</text>
+        </view>
+      </view>
+
+      <view class="meta glass">
+        <view class="meta-row"><text class="meta-k">模型</text><text class="meta-v">{{modelName}} · 二分类</text></view>
+        <view class="meta-row"><text class="meta-k">预处理</text><text class="meta-v">灰度 · 340 裁剪 · 224×224</text></view>
+        <view class="meta-row"><text class="meta-k">时间</text><text class="meta-v">{{detectTime}}</text></view>
+        <view wx:if="{{elapsedMs}}" class="meta-row"><text class="meta-k">推理耗时</text><text class="meta-v">{{elapsedMs}} ms</text></view>
+        <text class="meta-note">判定依据为图像可见霉变表型，不是黄曲霉毒素含量测定；毒素定量需按 GB 2761 用液相色谱等方法完成。</text>
+      </view>
+
+      <view class="actions">
+        <button class="share press" open-type="share">分享给好友</button>
+        <view class="poster-btn press" bindtap="makePoster">生成分享海报</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 质检画布（离屏，仅用于取样） -->
+  <canvas type="2d" id="qcCanvas" class="qc-canvas"></canvas>
+
+  <!-- 海报画布（离屏摆放，仅用于绘制） -->
+  <canvas type="2d" id="posterCanvas" class="poster-canvas"></canvas>
+
+  <!-- 海报预览 -->
+  <view wx:if="{{showPoster}}" class="poster-mask" bindtap="closePoster">
+    <view class="poster-box" catchtap="noop">
+      <image wx:if="{{posterPath}}" src="{{posterPath}}" mode="widthFix" class="poster-img"/>
+      <view wx:else class="poster-loading">正在生成海报…</view>
+      <view class="poster-actions">
+        <view class="pa pa-ghost press" bindtap="closePoster">关闭</view>
+        <view class="pa pa-main press" bindtap="savePoster">保存到相册</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <text class="footer-1">新苗项目 · 坚果霉变视觉筛查</text>
+    <text class="footer-2">科研演示 · 不作为食品安全结论</text>
+  </view>
+</view>

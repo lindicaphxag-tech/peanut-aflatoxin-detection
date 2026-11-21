@@ -1,0 +1,120 @@
+<!--pages/knowledge/knowledge.wxml-->
+<view class="container">
+  <view class="aurora aurora-2"></view>
+
+  <view class="topbar">
+    <view class="brand">
+      <view class="brand-mark"><view class="bm-dot"></view></view>
+      <text class="brand-text">KNOWLEDGE</text>
+    </view>
+  </view>
+
+  <view class="page-head">
+    <text class="h1">黄曲霉，比你想的更耐高温</text>
+    <text class="h2">一类致癌物 · 268℃ 才分解 · 花生限量 20 μg/kg</text>
+  </view>
+
+  <!-- 警示条 -->
+  <view class="alert glass">
+    <view class="alert-bar"></view>
+    <view class="alert-body">
+      <text class="alert-t">WHO / IARC 一类致癌物</text>
+      <text class="alert-c">黄曲霉毒素的毒性约为砒霜的 68 倍，主要靶器官是肝脏；普通烹饪温度无法破坏。</text>
+    </view>
+  </view>
+
+  <view class="section-title">BASICS · 基本事实</view>
+
+  <view class="card glass">
+    <text class="card-t">它从哪来</text>
+    <text class="card-c">由黄曲霉（<text class="em">Aspergillus flavus</text>）与寄生曲霉产生的次生代谢产物，常见于花生、玉米、坚果、大米等农产品。</text>
+  </view>
+
+  <view class="card glass">
+    <text class="card-t">为什么高温杀不死</text>
+    <text class="card-c">黄曲霉毒素熔点约 268℃，化学性质稳定。100–200℃ 的日常烹饪只能杀菌，不能分解毒素——所以"煮熟了就没事"是错的。</text>
+  </view>
+
+  <view class="card glass">
+    <text class="card-t">高危食物</text>
+    <view class="tags">
+      <text class="tag">花生</text>
+      <text class="tag">玉米</text>
+      <text class="tag">核桃</text>
+      <text class="tag">杏仁</text>
+      <text class="tag">开心果</text>
+      <text class="tag">大米</text>
+    </view>
+  </view>
+
+  <view class="section-title">TOXINS · 四种主要毒素（点卡片翻面）</view>
+
+  <view class="flip-grid">
+    <view
+      wx:for="{{toxins}}"
+      wx:key="name"
+      class="flip {{flipped === index ? 'flip-on' : ''}}"
+      data-index="{{index}}"
+      bindtap="toggle"
+    >
+      <view class="flip-inner">
+        <view class="flip-face flip-front glass">
+          <text class="toxin-name">{{item.name}}</text>
+          <text class="toxin-tag">{{item.tag}}</text>
+        </view>
+        <view class="flip-face flip-back glass">
+          <text class="toxin-back-t">{{item.name}}</text>
+          <text class="toxin-back-c">{{item.desc}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-title">LIMITS · 国家标准</view>
+
+  <view class="card glass">
+    <view class="table">
+      <view class="tr th">
+        <text class="td1">食品类别</text>
+        <text class="td2">限量（μg/kg）</text>
+      </view>
+      <view class="tr"><text class="td1">花生及制品</text><text class="td2">≤ 20</text></view>
+      <view class="tr"><text class="td1">玉米及制品</text><text class="td2">≤ 20</text></view>
+      <view class="tr"><text class="td1">大米</text><text class="td2">≤ 10</text></view>
+    </view>
+    <text class="note">依据 GB 2761-2017《食品安全国家标准 食品中真菌毒素限量》</text>
+  </view>
+
+  <view class="section-title">HOW · 本系统怎么判</view>
+
+  <view class="card glass">
+    <text class="card-c">本小程序用近红外单通道图像 + 轻量卷积网络：灰度化并居中裁剪后，判断「正常 / 发霉」。判断依据是霉变在近红外下的反射差异，不是毒素含量。</text>
+    <view class="steps">
+      <view class="step"><text class="step-n">1</text><text class="step-t">拍摄取景</text></view>
+      <view class="step"><text class="step-n">2</text><text class="step-t">灰度化 + 裁剪 340</text></view>
+      <view class="step"><text class="step-n">3</text><text class="step-t">224×224 归一化</text></view>
+      <view class="step"><text class="step-n">4</text><text class="step-t">MobileNetV3 推理</text></view>
+      <view class="step"><text class="step-n">5</text><text class="step-t">p(mold) 与阈值比较</text></view>
+    </view>
+  </view>
+
+  <view class="section-title">PREVENT · 怎么防</view>
+
+  <view class="card glass">
+    <view class="tip"><text class="tip-n">01</text><text class="tip-t">买正规渠道，看生产日期，别囤太久</text></view>
+    <view class="tip"><text class="tip-n">02</text><text class="tip-t">密封、避光、干燥；南方梅雨季尤其注意</text></view>
+    <view class="tip"><text class="tip-n">03</text><text class="tip-t">吃到苦味坚果立刻吐掉并漱口</text></view>
+    <view class="tip"><text class="tip-n">04</text><text class="tip-t">发现霉变整批挑出丢弃，不要只去掉霉的那颗</text></view>
+  </view>
+
+  <view class="ref glass">
+    <text class="ref-t">参考文献</text>
+    <text class="ref-c">[1] IARC Monographs, Vol. 82, 2002</text>
+    <text class="ref-c">[2] GB 2761-2017 食品中真菌毒素限量</text>
+    <text class="ref-c">[3] 国家食品安全风险评估中心相关评估报告</text>
+  </view>
+
+  <view class="footer">
+    <text class="footer-1">科普内容仅供理解背景，不构成医疗或食品安全建议</text>
+  </view>
+</view>

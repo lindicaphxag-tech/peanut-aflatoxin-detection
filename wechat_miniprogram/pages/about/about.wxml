@@ -1,0 +1,109 @@
+﻿<!--pages/about/about.wxml-->
+<view class="container">
+  <view class="aurora aurora-1"></view>
+
+  <view class="topbar">
+    <view class="brand">
+      <view class="brand-mark"><view class="bm-dot"></view></view>
+      <text class="brand-text">ABOUT</text>
+    </view>
+    <view class="chip"><text class="chip-text">v2.2.0</text></view>
+  </view>
+
+  <view class="page-head">
+    <text class="h1">坚果霉变视觉筛查</text>
+    <text class="h2">新苗项目 · 近红外图像 → 二分类判定 → 建议</text>
+  </view>
+
+  <view class="card glass">
+    <text class="card-t">做什么</text>
+    <text class="card-c">面向花生等坚果的霉变快速筛查工具。样本经近红外采集装置成像后上传，后端调用单通道卷积神经网络判断样本处于「正常 / 发霉」两种状态，用于仓储与收购环节的初筛提示。</text>
+  </view>
+
+  <view class="section-title">METRICS · 实测指标</view>
+
+  <view class="metric-grid">
+    <view class="metric glass">
+      <text class="metric-n">{{m.accuracy}}%</text>
+      <text class="metric-k">二分类准确率</text>
+    </view>
+    <view class="metric glass">
+      <text class="metric-n t-ok">{{m.recall}}%</text>
+      <text class="metric-k">霉变召回率</text>
+    </view>
+    <view class="metric glass">
+      <text class="metric-n">{{m.recallNormal}}%</text>
+      <text class="metric-k">特异度（正常判对）</text>
+    </view>
+    <view class="metric glass">
+      <text class="metric-n">{{m.total}}</text>
+      <text class="metric-k">测试样本数</text>
+    </view>
+  </view>
+  <text class="metric-note">口径：测试集 {{m.total}} 张 / {{m.groups}} 组，阈值 {{m.threshold}}；按组投票准确率 {{m.groupAcc}}%。{{m.note}}</text>
+
+  <view class="section-title">STACK · 技术栈</view>
+
+  <view class="card glass">
+    <view class="kv"><text class="k">部署模型</text><text class="v">{{m.modelName}}（迁移学习）</text></view>
+    <view class="kv"><text class="k">分类类型</text><text class="v">3 分类</text></view>
+    <view class="kv"><text class="k">预处理</text><text class="v">灰度 · 340 裁剪 · 224</text></view>
+    <view class="kv"><text class="k">输入尺寸</text><text class="v">224×224</text></view>
+    <view class="kv"><text class="k">推理服务</text><text class="v">Flask + PyTorch (CPU)</text></view>
+    <view class="kv"><text class="k">前端</text><text class="v">微信小程序原生</text></view>
+  </view>
+
+  <view class="section-title">THRESHOLD · 判定阈值（实验）</view>
+
+  <view class="card glass">
+    <text class="card-c">下面三个数控制「结果可信 / 建议复检 / 无法判断」的划分。改完保存后，下一次检测生效；答辩时可以现场调，观察拒识率怎么变。</text>
+
+    <view class="sl-row">
+      <view class="sl-head"><text class="sl-k">判定阈值 p(mold)</text><text class="sl-v">{{thrPct}}%</text></view>
+      <slider class="sl" min="5" max="95" step="1" value="{{thrPct}}" activeColor="#e0bb7a" backgroundColor="rgba(255,255,255,0.12)" block-size="20" bindchange="onThreshold"/>
+    </view>
+
+    <view class="sl-row">
+      <view class="sl-head"><text class="sl-k">灰区宽度（离阈值多近算不确定）</text><text class="sl-v">{{marginPct}}%</text></view>
+      <slider class="sl" min="0" max="40" step="1" value="{{marginPct}}" activeColor="#e0bb7a" backgroundColor="rgba(255,255,255,0.12)" block-size="20" bindchange="onMarginP"/>
+    </view>
+
+    <view class="sl-row">
+          <view class="sl-head"><text class="sl-k">推理增强</text><text class="sl-v">水平翻转 TTA（2 次前向平均）</text></view>
+          </view>
+
+    <view class="th-actions">
+      <view class="th-btn ghost press" bindtap="resetTh">恢复默认</view>
+      <view class="th-btn main press {{dirty ? '' : 'is-dim'}}" bindtap="saveTh">保存阈值</view>
+    </view>
+    <text class="th-note">默认阈值 68.2%（验证集上按 recall≥0.95 选定），灰区 15%。改完只影响本机。</text>
+  </view>
+
+  <view class="section-title">PIPELINE · 检测流程</view>
+
+  <view class="card glass">
+    <view class="flow">
+      <view class="flow-item"><view class="flow-dot"></view><text class="flow-t">拍摄 / 选择样本图像</text></view>
+      <view class="flow-line"></view>
+      <view class="flow-item"><view class="flow-dot"></view><text class="flow-t">EXIF 转正 → 转 8 位灰度</text></view>
+      <view class="flow-line"></view>
+      <view class="flow-item"><view class="flow-dot"></view><text class="flow-t">居中裁剪 340×340 → 缩放 224×224</text></view>
+      <view class="flow-line"></view>
+      <view class="flow-item"><view class="flow-dot"></view><text class="flow-t">MobileNetV3-Small(1ch) 前向</text></view>
+      <view class="flow-line"></view>
+      <view class="flow-item"><view class="flow-dot"></view><text class="flow-t">Softmax 输出 p(mold)，与阈值比较</text></view>
+    </view>
+  </view>
+
+  <view class="section-title">LIMITS · 边界</view>
+
+  <view class="card glass">
+    <text class="card-c">1. 判断的是图像中可见的霉变表型，不是黄曲霉毒素含量；毒素定量需按 GB 2761 用液相色谱-串联质谱等方法完成。</text>
+    <text class="card-c">2. 指标来自实验室自建样本集，样本量有限，未覆盖不同品种、光照与拍摄设备，跨场景使用前需重新验证。</text>
+    <text class="card-c">3. 结果仅用于科研演示与初筛提示，不构成食品安全结论。</text>
+  </view>
+
+  <view class="footer">
+    <text class="footer-1">© 2026 新苗项目组 · 仅供学术研究使用</text>
+  </view>
+</view>

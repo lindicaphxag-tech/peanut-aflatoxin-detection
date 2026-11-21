@@ -1,0 +1,13 @@
+# Test / inference (peanut_test.py)
+torch>=2.0
+torchvision>=0.15
+numpy
+Pillow
+
+# Training only (peanut_train.py split/train/export)
+pandas
+scikit-learn
+
+# Optional: ONNX export in the export stage and ONNX Runtime on the device
+# onnx
+# onnxruntime

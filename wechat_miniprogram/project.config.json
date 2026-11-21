@@ -1,0 +1,43 @@
+{
+  "appid": "wxfde02e2eaec32049",
+  "projectname": "nut-mold-detection",
+  "description": "坚果黄曲霉检测小程序",
+  "setting": {
+    "minifyWXML": true,
+    "es6": false,
+    "postcss": false,
+    "compileWorklet": false,
+    "minified": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {
+    "wxext94b1b46f6603361": "3.6.0"
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {},
+  "networkTimeout": {
+    "request": 30000,
+    "uploadFile": 30000,
+    "downloadFile": 30000
+  }
+}

@@ -1,0 +1,104 @@
+/* app.wxss —— 全局设计令牌与基础样式（2026-11 视觉改版） */
+page {
+  --ink: #12100d;
+  --ink-2: #1b1712;
+  --ink-3: #241d16;
+  --line: rgba(217, 178, 106, 0.18);
+  --line-strong: rgba(217, 178, 106, 0.42);
+  --gold: #e0bb7a;
+  --gold-deep: #b78a43;
+  --jade: #58c9a3;
+  --danger: #ff7a63;
+  --warn: #f0b429;
+  --text: #f4ece0;
+  --muted: #a2937f;
+  --muted-2: #8e8476;
+
+  background: var(--ink);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'MiSans', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+view, text, button, input {
+  box-sizing: border-box;
+}
+
+/* 只裁横向溢出，纵向保持可滚动 */
+page {
+  overflow-x: hidden;
+}
+
+.container {
+  position: relative;
+  min-height: 100vh;
+  padding: 0 32rpx calc(200rpx + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(1100rpx 700rpx at 18% -8%, rgba(217, 178, 106, 0.16), transparent 60%),
+    radial-gradient(900rpx 620rpx at 88% 4%, rgba(88, 201, 163, 0.10), transparent 58%),
+    linear-gradient(180deg, #171310 0%, #12100d 46%, #0e0c0a 100%);
+}
+
+/* 背景呼吸光斑 */
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70rpx);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.aurora-1 {
+  width: 520rpx;
+  height: 520rpx;
+  top: -160rpx;
+  left: -120rpx;
+  background: radial-gradient(circle, rgba(224, 187, 122, 0.55), transparent 68%);
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.aurora-2 {
+  width: 460rpx;
+  height: 460rpx;
+  top: 120rpx;
+  right: -160rpx;
+  background: radial-gradient(circle, rgba(88, 201, 163, 0.42), transparent 68%);
+  animation: drift 18s ease-in-out infinite alternate-reverse;
+}
+@keyframes drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(28rpx, 36rpx, 0) scale(1.12); }
+}
+
+/* 通用玻璃卡 */
+.glass {
+  position: relative;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.015));
+  border: 1rpx solid var(--line);
+  border-radius: 28rpx;
+  box-shadow: 0 18rpx 50rpx rgba(0, 0, 0, 0.42), inset 0 1rpx 0 rgba(255, 255, 255, 0.07);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  font-size: 26rpx;
+  letter-spacing: 3rpx;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 34rpx 0 18rpx;
+}
+.section-title::before {
+  content: '';
+  width: 6rpx;
+  height: 22rpx;
+  margin-right: 12rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(180deg, var(--gold), transparent);
+}
+
+.press {
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+.press:active {
+  transform: scale(0.975);
+  opacity: 0.9;
+}
